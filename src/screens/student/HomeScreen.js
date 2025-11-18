@@ -7,8 +7,7 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   RefreshControl,
-  Alert,
-  Platform
+  Alert
 } from 'react-native';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
@@ -56,40 +55,35 @@ export const StudentHomeScreen = ({ navigation }) => {
     loadVendors();
   };
 
-  const performLogout = async () => {
-    try {
-      console.log('🔴 Starting logout...');
-      const { error } = await authService.signOut();
-
-      if (error) {
-        console.error('❌ Logout error:', error);
-        Alert.alert('Error', 'Failed to logout: ' + error.message);
-        return;
-      }
-
-      console.log('✅ Logout successful! AppNavigator will handle navigation automatically.');
-    } catch (err) {
-      console.error('🔴 Logout catch error:', err);
-      Alert.alert('Error', 'An error occurred during logout');
-    }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to logout?');
-      if (!confirmed) {
-        return;
-      }
-      performLogout();
-      return;
-    }
-
+  const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout }
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🔴 Starting logout...');
+              const { error } = await authService.signOut();
+              
+              if (error) {
+                console.error('❌ Logout error:', error);
+                Alert.alert('Error', 'Failed to logout: ' + error.message);
+                return;
+              }
+              
+              console.log('✅ Logout successful! AppNavigator will handle navigation automatically.');
+              // No need to manually navigate - AppNavigator's auth state listener
+              // will detect the sign out and automatically switch to AuthNavigator
+            } catch (err) {
+              console.error('🔴 Logout catch error:', err);
+              Alert.alert('Error', 'An error occurred during logout');
+            }
+          }
+        }
       ]
     );
   };
@@ -100,8 +94,8 @@ export const StudentHomeScreen = ({ navigation }) => {
       onPress={() => navigation.navigate('Menu', { vendor: item })}
     >
       <View style={styles.vendorInfo}>
-        <Text style={styles.vendorName}>{item.canteen_name}</Text>
-        <Text style={styles.vendorLocation}>{item.canteen_location}</Text>
+        <Text style={styles.vendorName}>{item.business_name}</Text>
+        <Text style={styles.vendorLocation}>{item.location}</Text>
         <View style={styles.statusContainer}>
           <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
           <Text style={styles.statusText}>Open</Text>
@@ -125,7 +119,7 @@ export const StudentHomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTextContainer}>
           <Text style={styles.greeting}>Welcome back!</Text>
           <Text style={styles.userName}>
             {user?.user_metadata?.full_name || 'Student'}
@@ -171,10 +165,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.xl,
+  },
+  headerTextContainer: {
+    flex: 1,
+    paddingRight: SPACING.lg,
   },
   greeting: {
     fontSize: FONTS.regular,
@@ -184,10 +182,14 @@ const styles = StyleSheet.create({
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.text,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    alignItems: 'center',
+    columnGap: SPACING.sm,
+    flexShrink: 0,
   },
   ordersButton: {
     paddingHorizontal: SPACING.md,
@@ -222,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   vendorCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.cardBackground,
     padding: SPACING.lg,
     borderRadius: BORDER_RADIUS.large,
     marginBottom: SPACING.md,

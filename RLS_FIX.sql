@@ -32,6 +32,18 @@ WITH CHECK (
 );
 
 -- =====================================================
+-- FIX: Allow students to read approved vendors
+-- =====================================================
+
+-- Let any signed-in user read vendors that are already approved
+CREATE POLICY "vendors_select_approved" ON vendors
+FOR SELECT
+TO authenticated
+USING (
+  status = 'approved'
+);
+
+-- =====================================================
 -- VERIFY: Check that these policies are in place
 -- =====================================================
 

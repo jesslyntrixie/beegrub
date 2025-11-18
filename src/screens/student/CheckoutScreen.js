@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,44 +11,48 @@ import {
 } from 'react-native';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
-import { authService } from '../../services/supabase';
-
-const PICKUP_LOCATIONS = [
-  'Ground Floor - Main Lobby',
-  'Ground Floor - Canteen Area',
-  'First Floor - Study Area',
-  'Second Floor - Library Entrance',
-];
-
-const PICKUP_TIMES = [
-  '10:00 AM',
-  '10:30 AM',
-  '11:00 AM',
-  '11:30 AM',
-  '12:00 PM',
-  '12:30 PM',
-  '01:00 PM',
-  '01:30 PM',
-  '02:00 PM',
-  '02:30 PM',
-  '03:00 PM',
-  '03:30 PM',
-  '04:00 PM',
-];
+import { authService, supabase } from '../../services/supabase';
+import { CartContext } from '../../context/CartContext';
 
 export const CheckoutScreen = ({ route, navigation }) => {
-  const { vendor, cart } = route.params;
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+  const { vendor } = route.params;
+  const { cart, clearCart, getCartTotals } = useContext(CartContext);
+  const cartItems = cart.items;
+  const totals = getCartTotals();
+  const [pickupLocations, setPickupLocations] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
+  useEffect(() => {
+    const loadReferenceData = async () => {
+      try {
+        const [{ data: locations }, { data: slots }] = await Promise.all([
+          supabase
+            .from('pickup_locations')
+            .select('id, name')
+            .eq('is_active', true),
+          supabase
+            .from('time_slots')
+            .select('id, time_range')
+            .eq('is_active', true),
+        ]);
 
-  const getTotalItems = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
+        setPickupLocations(locations || []);
+        setTimeSlots(slots || []);
+      } catch (error) {
+        console.error('Error loading reference data:', error);
+        Alert.alert('Error', 'Failed to load pickup options');
+      }
+    };
+
+    loadReferenceData();
+  }, []);
+
+  const getTotalPrice = () => {
+    return totals.total;
   };
 
   const handlePlaceOrder = async () => {
@@ -65,20 +69,19 @@ export const CheckoutScreen = ({ route, navigation }) => {
         return;
       }
 
-      // Create order
+      // Create order (schema-aligned)
       const orderData = {
         student_id: user.id,
         vendor_id: vendor.id,
-        pickup_location: selectedLocation,
-        pickup_time: selectedTime,
-        notes: notes,
-        total_amount: getTotalPrice(),
-        status: 'pending',
-        order_items: cart.map(item => ({
-          menu_item_id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        }))
+        pickup_location_id: selectedLocation.id,
+        order_type: 'pre_order',
+        subtotal: totals.subtotal,
+        service_fee: totals.serviceFee,
+        total: totals.total,
+        status: 'scheduled',
+        scheduled_pickup_time: new Date().toISOString(),
+        time_slot: selectedTime.time_range,
+        special_instructions: notes || null,
       };
 
       const { data, error } = await apiService.orders.create(orderData);
@@ -94,7 +97,10 @@ export const CheckoutScreen = ({ route, navigation }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Orders')
+            onPress: () => {
+              clearCart();
+              navigation.navigate('Orders');
+            }
           }
         ]
       );
@@ -110,21 +116,21 @@ export const CheckoutScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => navigation.goBack()}
+          {pickupLocations.map((location) => (
           style={styles.backButton}
-        >
+              key={location.id}
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Checkout</Text>
-      </View>
-
+                selectedLocation?.id === location.id && styles.selectedOption
+              ]}
+              onPress={() => setSelectedLocation(location)}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
+                selectedLocation?.id === location.id && styles.selectedOptionText
           <View style={styles.orderSummary}>
-            <Text style={styles.vendorName}>{vendor.canteen_name}</Text>
-            {cart.map((item, index) => (
+                {location.name}
+            {cartItems.map((item, index) => (
               <View key={index} style={styles.orderItem}>
                 <Text style={styles.itemName}>
                   {item.quantity}x {item.name}
@@ -169,20 +175,20 @@ export const CheckoutScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Time</Text>
           <View style={styles.timeGrid}>
-            {PICKUP_TIMES.map((time, index) => (
+            {timeSlots.map((slot) => (
               <TouchableOpacity
-                key={index}
+                key={slot.id}
                 style={[
                   styles.timeButton,
-                  selectedTime === time && styles.selectedTime
+                  selectedTime?.id === slot.id && styles.selectedTime
                 ]}
-                onPress={() => setSelectedTime(time)}
+                onPress={() => setSelectedTime(slot)}
               >
                 <Text style={[
                   styles.timeText,
-                  selectedTime === time && styles.selectedTimeText
+                  selectedTime?.id === slot.id && styles.selectedTimeText
                 ]}>
-                  {time}
+                  {slot.time_range}
                 </Text>
               </TouchableOpacity>
             ))}

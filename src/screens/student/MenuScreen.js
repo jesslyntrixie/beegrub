@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -7,16 +7,21 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Alert,
-  Image
+  Modal,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
+import { CartContext } from '../../context/CartContext'; 
 
 export const MenuScreen = ({ route, navigation }) => {
   const { vendor } = route.params;
   const [menuItems, setMenuItems] = useState([]);
-  const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const { cart, addToCart, updateQuantity, getCartTotals } = useContext(CartContext);
+  const cartItems = cart.items;
+  const totals = getCartTotals();
 
   useEffect(() => {
     loadMenuItems();
@@ -38,51 +43,25 @@ export const MenuScreen = ({ route, navigation }) => {
     }
   };
 
-  const addToCart = (item) => {
-    const existingItem = cart.find(cartItem => cartItem.id === item.id);
-    if (existingItem) {
-      setCart(cart.map(cartItem => 
-        cartItem.id === item.id 
-          ? { ...cartItem, quantity: cartItem.quantity + 1 }
-          : cartItem
-      ));
-    } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
-    }
-  };
-
-  const removeFromCart = (itemId) => {
-    const existingItem = cart.find(cartItem => cartItem.id === itemId);
-    if (existingItem && existingItem.quantity > 1) {
-      setCart(cart.map(cartItem => 
-        cartItem.id === itemId 
-          ? { ...cartItem, quantity: cartItem.quantity - 1 }
-          : cartItem
-      ));
-    } else {
-      setCart(cart.filter(cartItem => cartItem.id !== itemId));
-    }
-  };
-
   const getItemQuantity = (itemId) => {
-    const item = cart.find(cartItem => cartItem.id === itemId);
+    const item = cartItems.find(cartItem => cartItem.menu_item_id === itemId);
     return item ? item.quantity : 0;
   };
 
-  const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const openItemDetails = (item) => {
+    setSelectedItem(item);
   };
 
-  const getTotalItems = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
+  const closeItemDetails = () => {
+    setSelectedItem(null);
   };
 
   const goToCheckout = () => {
-    if (cart.length === 0) {
+    if (!cartItems.length) {
       Alert.alert('Empty Cart', 'Please add items to your cart first');
       return;
     }
-    navigation.navigate('Checkout', { vendor, cart });
+    navigation.navigate('Checkout', { vendor, cartItems });
   };
 
   const renderMenuItem = ({ item }) => {
@@ -90,25 +69,29 @@ export const MenuScreen = ({ route, navigation }) => {
     
     return (
       <View style={styles.menuItem}>
-        <View style={styles.itemInfo}>
+        <TouchableOpacity
+          style={styles.itemInfo}
+          activeOpacity={0.7}
+          onPress={() => openItemDetails(item)}
+        >
           <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemDescription}>{item.description}</Text>
-          <Text style={styles.itemPrice}>Rp {item.price.toLocaleString()}</Text>
-        </View>
+          <Text style={styles.itemPriceLarge}>Rp {item.price.toLocaleString()}</Text>
+          <Text style={styles.detailsHint}>Tap for details</Text>
+        </TouchableOpacity>
         
         <View style={styles.quantityContainer}>
           {quantity > 0 ? (
             <View style={styles.quantityControls}>
               <TouchableOpacity 
                 style={styles.quantityButton}
-                onPress={() => removeFromCart(item.id)}
+                onPress={() => updateQuantity(item.id, quantity - 1)}
               >
                 <Text style={styles.quantityButtonText}>-</Text>
               </TouchableOpacity>
               <Text style={styles.quantityText}>{quantity}</Text>
               <TouchableOpacity 
                 style={styles.quantityButton}
-                onPress={() => addToCart(item)}
+                onPress={() => addToCart(item, vendor.id, vendor.business_name || vendor.canteen_name)}
               >
                 <Text style={styles.quantityButtonText}>+</Text>
               </TouchableOpacity>
@@ -116,7 +99,7 @@ export const MenuScreen = ({ route, navigation }) => {
           ) : (
             <TouchableOpacity 
               style={styles.addButton}
-              onPress={() => addToCart(item)}
+              onPress={() => addToCart(item, vendor.id, vendor.business_name || vendor.canteen_name)}
             >
               <Text style={styles.addButtonText}>Add</Text>
             </TouchableOpacity>
@@ -145,8 +128,8 @@ export const MenuScreen = ({ route, navigation }) => {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.vendorInfo}>
-          <Text style={styles.vendorName}>{vendor.canteen_name}</Text>
-          <Text style={styles.vendorLocation}>{vendor.canteen_location}</Text>
+          <Text style={styles.vendorName}>{vendor.business_name || vendor.canteen_name}</Text>
+          <Text style={styles.vendorLocation}>{vendor.location || vendor.canteen_location}</Text>
         </View>
       </View>
 
@@ -155,18 +138,21 @@ export const MenuScreen = ({ route, navigation }) => {
         renderItem={renderMenuItem}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.menuList}
+        contentContainerStyle={[
+          styles.menuList,
+          cartItems.length ? styles.menuListWithCart : null
+        ]}
         ListEmptyComponent={renderEmptyState}
       />
 
-      {cart.length > 0 && (
+      {cartItems.length > 0 && (
         <View style={styles.cartSummary}>
           <View style={styles.cartInfo}>
             <Text style={styles.cartItemCount}>
-              {getTotalItems()} item{getTotalItems() !== 1 ? 's' : ''}
+              {totals.itemCount} item{totals.itemCount !== 1 ? 's' : ''}
             </Text>
             <Text style={styles.cartTotal}>
-              Rp {getTotalPrice().toLocaleString()}
+              Rp {totals.total.toLocaleString()}
             </Text>
           </View>
           <TouchableOpacity 
@@ -177,6 +163,77 @@ export const MenuScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
+
+      <Modal
+        visible={!!selectedItem}
+        transparent
+        animationType="fade"
+        onRequestClose={closeItemDetails}
+      >
+        <TouchableWithoutFeedback onPress={closeItemDetails}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+                <Text style={styles.modalPrice}>
+                  Rp {selectedItem ? selectedItem.price.toLocaleString() : ''}
+                </Text>
+                {!!selectedItem?.description && (
+                  <Text style={styles.modalDescription}>{selectedItem.description}</Text>
+                )}
+
+                <View style={styles.modalActions}>
+                  {selectedItem && getItemQuantity(selectedItem.id) > 0 ? (
+                    <View style={styles.quantityControls}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => updateQuantity(
+                          selectedItem.id,
+                          getItemQuantity(selectedItem.id) - 1
+                        )}
+                      >
+                        <Text style={styles.quantityButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>
+                        {getItemQuantity(selectedItem.id)}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => addToCart(
+                          selectedItem,
+                          vendor.id,
+                          vendor.business_name || vendor.canteen_name
+                        )}
+                      >
+                        <Text style={styles.quantityButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.addButton}
+                      onPress={() => {
+                        if (selectedItem) {
+                          addToCart(
+                            selectedItem,
+                            vendor.id,
+                            vendor.business_name || vendor.canteen_name
+                          );
+                        }
+                      }}
+                    >
+                      <Text style={styles.addButtonText}>Add to Cart</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TouchableOpacity style={styles.closeButton} onPress={closeItemDetails}>
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -185,11 +242,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.primary,
+    paddingTop: SPACING.xl,
+    // paddingBottom: SPACING.xl
   },
   header: {
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.md,
+    // fontSize: FONTS.medium
   },
   backButton: {
     marginBottom: SPACING.md,
@@ -215,9 +275,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
   },
+  menuListWithCart: {
+    paddingBottom: SPACING.xxl * 1.5,
+  },
   menuItem: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.lg,
+    backgroundColor: COLORS.cardBackground,
+    padding: SPACING.xs,
     borderRadius: BORDER_RADIUS.large,
     marginBottom: SPACING.md,
     flexDirection: 'row',
@@ -240,15 +303,15 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
-  itemDescription: {
-    fontSize: FONTS.small,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  itemPrice: {
-    fontSize: FONTS.regular,
+  itemPriceLarge: {
+    fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.success,
+  },
+  detailsHint: {
+    fontSize: FONTS.small,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
   },
   quantityContainer: {
     marginLeft: SPACING.md,
@@ -256,7 +319,7 @@ const styles = StyleSheet.create({
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.medium,
     paddingHorizontal: SPACING.xs,
   },
@@ -293,7 +356,8 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   cartSummary: {
-    backgroundColor: COLORS.white,
+    // position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.lg,
     flexDirection: 'row',
@@ -330,6 +394,47 @@ const styles = StyleSheet.create({
     fontSize: FONTS.regular,
     fontWeight: 'bold',
     color: COLORS.white,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.large,
+    padding: SPACING.xl,
+    gap: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalPrice: {
+    fontSize: FONTS.medium,
+    fontWeight: 'bold',
+    color: COLORS.success,
+  },
+  modalDescription: {
+    fontSize: FONTS.regular,
+    color: COLORS.textSecondary,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginTop: SPACING.sm,
+  },
+  closeButtonText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textSecondary,
   },
   emptyState: {
     alignItems: 'center',

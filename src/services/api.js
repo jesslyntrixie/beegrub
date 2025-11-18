@@ -72,7 +72,7 @@ export const apiService = {
         .from('menu_items')
         .select('*')
         .eq('vendor_id', vendorId)
-        .eq('available', true);
+        .eq('is_available', true);
       return { data, error };
     },
 

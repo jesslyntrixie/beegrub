@@ -16,6 +16,15 @@ import { COLORS } from '../constants/colors';
 
 const ROLE_FETCH_TIMEOUT_MS = 20000;
 
+/**
+ * Runs the provided async factory function but aborts if it does not resolve before the timeout elapses.
+ * This gives us a safety net so the UI is not blocked forever when Supabase takes too long to reply.
+ * @param {() => Promise<unknown>} factory Lazy async operation to execute.
+ * @param {number} [timeoutMs=ROLE_FETCH_TIMEOUT_MS] Maximum time to wait before failing.
+ * @param {string} [timeoutMessage='Role fetch timeout'] Message used when the timeout is hit.
+ * @returns {Promise<unknown>} Resolves with the factory result if it finishes in time.
+ * @throws {Error} Throws when the timeout expires before the factory resolves.
+ */
 const withTimeout = async (factory, timeoutMs = ROLE_FETCH_TIMEOUT_MS, timeoutMessage = 'Role fetch timeout') => {
   let timeoutId;
   const timeoutPromise = new Promise((_, reject) => {
@@ -30,6 +39,11 @@ const withTimeout = async (factory, timeoutMs = ROLE_FETCH_TIMEOUT_MS, timeoutMe
   }
 };
 
+/**
+ * Top-level navigator that decides which stack to render based on Supabase authentication state
+ * and the role fetched from the `users` table. Acts as the entry point for every experience variant
+ * (auth, student, vendor, admin).
+ */
 export const AppNavigator = () => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);

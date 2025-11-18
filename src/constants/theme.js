@@ -9,7 +9,7 @@ export const FONTS = {
   
   // Font sizes based on your design
   extraLarge: 64,  // BeeGrub title
-  large: 32,       // Screen titles
+  large: 24,       // Screen titles
   medium: 18,      // Tagline, body text
   regular: 16,     // Regular body text
   small: 14,       // Small text, labels

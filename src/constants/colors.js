@@ -1,12 +1,14 @@
 export const COLORS = {
-  // Primary colors from your design
-  primary: '#f1ead1',
-  background: '#f1ead1',
+  // Core surfaces
+  primary: '#ffffff',
+  background: '#ffffff',
+  surface: '#f1f1f1',
   
   // Text colors
   text: '#000000',
   textSecondary: '#363434',
-  textLight: '#666666',
+  textMuted: '#777575',
+  textLight: '#999999',
   
   // UI colors
   white: '#ffffff',
@@ -24,10 +26,10 @@ export const COLORS = {
   buttonDisabled: '#CCCCCC',
   
   // Background variations
-  cardBackground: '#ffffff',
-  inputBackground: '#ffffff',
+  cardBackground: '#f6f6f6',
+  inputBackground: '#f1f1f1',
   
   // Border colors
-  border: '#E0E0E0',
-  borderLight: '#F0F0F0',
+  border: '#E5E5E5',
+  borderLight: '#F2F2F2',
 };
