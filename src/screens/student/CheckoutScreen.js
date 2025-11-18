@@ -22,14 +22,14 @@ export const CheckoutScreen = ({ route, navigation }) => {
   const [pickupLocations, setPickupLocations] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [selectedTime, setSelectedTime] = useState(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadReferenceData = async () => {
       try {
-        const [{ data: locations }, { data: slots }] = await Promise.all([
+        const [{ data: locations, error: locError }, { data: slots, error: slotError }] = await Promise.all([
           supabase
             .from('pickup_locations')
             .select('id, name')
@@ -40,10 +40,16 @@ export const CheckoutScreen = ({ route, navigation }) => {
             .eq('is_active', true),
         ]);
 
+        if (locError || slotError) {
+          console.error('Error loading pickup options:', locError || slotError);
+          Alert.alert('Error', 'Failed to load pickup options');
+          return;
+        }
+
         setPickupLocations(locations || []);
         setTimeSlots(slots || []);
       } catch (error) {
-        console.error('Error loading reference data:', error);
+        console.error('Error loading pickup options:', error);
         Alert.alert('Error', 'Failed to load pickup options');
       }
     };
@@ -56,22 +62,32 @@ export const CheckoutScreen = ({ route, navigation }) => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedLocation || !selectedTime) {
+    if (!selectedLocation || !selectedTimeSlot) {
       Alert.alert('Missing Information', 'Please select pickup location and time');
       return;
     }
 
     setLoading(true);
     try {
-      const user = await authService.getCurrentUser();
-      if (!user) {
+      const authUser = await authService.getCurrentUser();
+      if (!authUser) {
         Alert.alert('Error', 'Please login again');
+        return;
+      }
+
+      // Look up the application user (and thus student) linked to this auth user
+      const { data: appUser, error: userError } = await apiService.users.getByAuthUserId(authUser.id);
+
+      if (userError || !appUser) {
+        console.error('Error fetching app user:', userError);
+        Alert.alert('Error', 'Failed to find student profile for this account.');
         return;
       }
 
       // Create order (schema-aligned)
       const orderData = {
-        student_id: user.id,
+        // student_id must reference students.id, which matches users.id
+        student_id: appUser.id,
         vendor_id: vendor.id,
         pickup_location_id: selectedLocation.id,
         order_type: 'pre_order',
@@ -79,8 +95,9 @@ export const CheckoutScreen = ({ route, navigation }) => {
         service_fee: totals.serviceFee,
         total: totals.total,
         status: 'scheduled',
+        // For MVP we keep it simple: current date + chosen time slot label
         scheduled_pickup_time: new Date().toISOString(),
-        time_slot: selectedTime.time_range,
+        time_slot: selectedTimeSlot.time_range,
         special_instructions: notes || null,
       };
 
@@ -116,20 +133,19 @@ export const CheckoutScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
-          {pickupLocations.map((location) => (
+          onPress={() => navigation.goBack()}
           style={styles.backButton}
-              key={location.id}
+        >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-                selectedLocation?.id === location.id && styles.selectedOption
-              ]}
-              onPress={() => setSelectedLocation(location)}
+        <Text style={styles.title}>Checkout</Text>
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Summary */}
         <View style={styles.section}>
-                selectedLocation?.id === location.id && styles.selectedOptionText
           <View style={styles.orderSummary}>
-                {location.name}
+            <Text style={styles.vendorName}>{vendor.business_name || vendor.canteen_name}</Text>
             {cartItems.map((item, index) => (
               <View key={index} style={styles.orderItem}>
                 <Text style={styles.itemName}>
@@ -152,20 +168,22 @@ export const CheckoutScreen = ({ route, navigation }) => {
         {/* Pickup Location */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Location</Text>
-          {PICKUP_LOCATIONS.map((location, index) => (
+          {pickupLocations.map((location) => (
             <TouchableOpacity
-              key={index}
+              key={location.id}
               style={[
                 styles.optionButton,
-                selectedLocation === location && styles.selectedOption
+                selectedLocation?.id === location.id && styles.selectedOption
               ]}
               onPress={() => setSelectedLocation(location)}
             >
-              <Text style={[
-                styles.optionText,
-                selectedLocation === location && styles.selectedOptionText
-              ]}>
-                {location}
+              <Text
+                style={[
+                  styles.optionText,
+                  selectedLocation?.id === location.id && styles.selectedOptionText,
+                ]}
+              >
+                {location.name}
               </Text>
             </TouchableOpacity>
           ))}
@@ -180,14 +198,16 @@ export const CheckoutScreen = ({ route, navigation }) => {
                 key={slot.id}
                 style={[
                   styles.timeButton,
-                  selectedTime?.id === slot.id && styles.selectedTime
+                  selectedTimeSlot?.id === slot.id && styles.selectedTime,
                 ]}
-                onPress={() => setSelectedTime(slot)}
+                onPress={() => setSelectedTimeSlot(slot)}
               >
-                <Text style={[
-                  styles.timeText,
-                  selectedTime?.id === slot.id && styles.selectedTimeText
-                ]}>
+                <Text
+                  style={[
+                    styles.timeText,
+                    selectedTimeSlot?.id === slot.id && styles.selectedTimeText,
+                  ]}
+                >
                   {slot.time_range}
                 </Text>
               </TouchableOpacity>
