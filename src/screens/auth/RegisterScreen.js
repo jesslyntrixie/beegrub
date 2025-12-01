@@ -9,13 +9,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Dimensions
+  ScrollView
 } from 'react-native';
 import { authService } from '../../services/supabase';
 import { apiService } from '../../services/api';
-
-const { width, height } = Dimensions.get('window');
+import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export const RegisterScreen = ({ route, navigation }) => {
   const { userType } = route.params;
@@ -76,7 +74,7 @@ export const RegisterScreen = ({ route, navigation }) => {
 
     // Full name validation
     if (!fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
+      newErrors.fullName = userType === 'vendor' ? 'Owner name is required' : 'Full name is required';
     }
 
     // Phone validation
@@ -179,10 +177,9 @@ export const RegisterScreen = ({ route, navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header Section - Following Figma design */}
           <View style={styles.header}>
             <Text style={styles.title}>Let's Get Started</Text>
-            <Text style={styles.subtitle}>Create an account to access our features</Text>
+            <Text style={styles.subtitle}>Create an account to continue</Text>
           </View>
 
           {/* Form Section - Following Figma layout order */}
@@ -194,11 +191,11 @@ export const RegisterScreen = ({ route, navigation }) => {
               </View>
             ) : null}
 
-            {/* BINUS Email Input */}
+            {/* Email Input */}
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.textInput, errors.email && styles.textInputError]}
-                placeholder="BINUS Email"
+                placeholder={userType === 'student' ? 'BINUS Email' : 'Email'}
                 placeholderTextColor="#636363"
                 value={formData.email}
                 onChangeText={(value) => updateFormData('email', value)}
@@ -210,11 +207,11 @@ export const RegisterScreen = ({ route, navigation }) => {
               {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
             </View>
 
-            {/* Full Name Input */}
+            {/* Full Name / Owner Name Input */}
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.textInput, errors.fullName && styles.textInputError]}
-                placeholder="Full Name"
+                placeholder={userType === 'vendor' ? 'Owner Name' : 'Full Name'}
                 placeholderTextColor="#636363"
                 value={formData.fullName}
                 onChangeText={(value) => updateFormData('fullName', value)}
@@ -339,136 +336,110 @@ export const RegisterScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // justifyContent: 'center',
-    backgroundColor: '#ffffff', // White background as per Figma
+    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    justifyContent: 'center', // This centers all content vertically
-    minHeight: height - 100, // Ensure full height for centering
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.xxl + SPACING.md,
+    paddingBottom: SPACING.xl,
   },
   
-  // Header Section - Following Figma design
   header: {
-    alignItems: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginBottom: SPACING.xl,
   },
   title: {
-    fontSize: 28, // Mobile-friendly size (was 42px in Figma)
-    fontWeight: '400',
-    color: '#000000',
-    textAlign: 'center',
-    marginBottom: 8,
-    fontFamily: 'System',
+    fontSize: FONTS.extraLarge,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14, // Mobile-friendly size (was 18px in Figma) 
+    fontSize: FONTS.small,
     fontWeight: '400',
-    color: '#363434',
-    textAlign: 'center',
-    fontFamily: 'System',
+    color: COLORS.textSecondary,
+    lineHeight: 20,
   },
 
-  // Form Section
   form: {
-    alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.md,
   },
   inputContainer: {
-    marginBottom: 16, // Spacing between inputs
-    width: '100%',
-    maxWidth: Math.min(330, width * 0.85), // Responsive width
-    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   
-  // Text Input Styling - Following Figma design
   textInput: {
-    backgroundColor: '#ffffff',
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.5)', // #00000080 from Figma
-    borderRadius: 8,
-    height: 50, // Mobile-friendly height (was 67px in Figma)
-    width: '100%',
-    paddingHorizontal: 16,
-    fontSize: 14, // Mobile-friendly size (was 18px in Figma)
-    color: '#636363',
-    fontFamily: 'System',
-    // Shadow styling from Figma
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderRadius: BORDER_RADIUS.medium,
+    height: 50,
+    paddingHorizontal: SPACING.md,
+    fontSize: FONTS.regular,
+    color: COLORS.text,
   },
 
-  // Register Button - Following Figma design
   registerButton: {
-    backgroundColor: '#000000',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 8,
-    height: 48, // Mobile-friendly height (was 60px in Figma)
-    width: Math.min(200, width * 0.5), // Responsive width (was 234px in Figma)
+    backgroundColor: COLORS.black,
+    borderRadius: BORDER_RADIUS.medium,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
-    marginTop: 24,
+    marginTop: SPACING.md,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   disabledButton: {
     opacity: 0.6,
   },
   registerButtonText: {
-    color: '#ffffff',
-    fontSize: 16, // Mobile-friendly size (was 24px in Figma)
+    color: COLORS.white,
+    fontSize: FONTS.regular,
     fontWeight: '700',
-    fontFamily: 'System',
   },
 
-  // Login Link - Following Figma position
   loginLink: {
     alignSelf: 'center',
-    marginTop: 16,
+    marginTop: SPACING.lg,
+    paddingVertical: SPACING.sm,
   },
   loginLinkText: {
-    fontSize: 12, // Mobile-friendly size (was 14px in Figma)
+    fontSize: FONTS.small,
     fontWeight: '400',
-    color: '#363434',
-    textAlign: 'center',
-    fontFamily: 'System',
+    color: COLORS.textSecondary,
   },
 
-  // Error Styles
   textInputError: {
-    borderColor: '#ff4444',
-    borderWidth: 1,
+    borderColor: COLORS.error,
+    borderWidth: 1.5,
   },
   errorText: {
-    color: '#ff4444',
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 4,
-    fontFamily: 'System',
+    color: COLORS.error,
+    fontSize: FONTS.extraSmall,
+    marginTop: SPACING.xs,
+    marginLeft: SPACING.xs,
   },
   errorContainer: {
-    backgroundColor: '#fff0f0',
+    backgroundColor: '#FFF5F5',
     borderLeftWidth: 4,
-    borderLeftColor: '#ff4444',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    width: '100%',
+    borderLeftColor: COLORS.error,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    marginBottom: SPACING.md,
   },
   errorMessage: {
-    color: '#cc0000',
-    fontSize: 13,
-    fontFamily: 'System',
-    lineHeight: 18,
+    color: COLORS.error,
+    fontSize: FONTS.small,
+    lineHeight: 20,
   },
 });

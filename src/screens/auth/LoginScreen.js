@@ -10,11 +10,11 @@ import {
   Dimensions,
   ActivityIndicator
 } from 'react-native';
-import { authService } from '../../services/supabase';
+import { authService, userService } from '../../services/supabase';
 
 const { width } = Dimensions.get('window');
 
-export const LoginScreen = ({ navigation, route }) => {
+export const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -83,6 +83,93 @@ export const LoginScreen = ({ navigation, route }) => {
       
       if (data?.user) {
         console.log('✅ Login successful! User:', data.user.email);
+        
+        // Check user status and vendor approval
+        console.log('🔍 Checking user status and vendor approval...');
+        const { data: userData, error: userError } = await userService.getUserData(data.user.id);
+        
+        console.log('📊 getUserData result:', JSON.stringify(userData, null, 2));
+        
+        if (userError) {
+          console.error('❌ Error fetching user data:', userError);
+          setError('❌ Error checking account status. Please try again.');
+          await authService.signOut(); // Sign out if we can't verify status
+          setLoading(false);
+          return;
+        }
+        
+        if (!userData) {
+          console.error('❌ No user data found');
+          setError('❌ Account not found. Please contact support.');
+          await authService.signOut();
+          setLoading(false);
+          return;
+        }
+        
+        // Check if user is suspended
+        if (userData.status === 'suspended') {
+          console.log('🚫 User account is suspended');
+          setError('🚫 Your account has been suspended. Please contact support.');
+          await authService.signOut();
+          setLoading(false);
+          return;
+        }
+        
+        // Check if user is inactive
+        if (userData.status === 'inactive') {
+          console.log('🚫 User account is inactive');
+          setError('🚫 Your account is inactive. Please contact support.');
+          await authService.signOut();
+          setLoading(false);
+          return;
+        }
+        
+        // For vendors, check approval status
+        if (userData.role === 'vendor') {
+          console.log('🏪 Vendor login detected, checking vendors array:', userData.vendors);
+          const vendorData = Array.isArray(userData.vendors) && userData.vendors.length > 0 
+            ? userData.vendors[0] 
+            : userData.vendors;
+          
+          console.log('🏪 Vendor data extracted:', vendorData);
+          
+          if (!vendorData) {
+            console.error('❌ Vendor data not found for user:', userData.id);
+            console.error('❌ Full userData:', JSON.stringify(userData, null, 2));
+            setError('❌ Vendor account not properly set up. Please contact support.');
+            await authService.signOut();
+            setLoading(false);
+            return;
+          }
+          
+          if (vendorData.status === 'suspended') {
+            console.log('🚫 Vendor account is suspended');
+            setError('🚫 Your vendor account has been suspended. Please contact support.');
+            await authService.signOut();
+            setLoading(false);
+            return;
+          }
+          
+          if (vendorData.status === 'pending') {
+            console.log('⏳ Vendor account pending approval');
+            setError('⏳ Your vendor account is pending approval. Please wait for admin verification.');
+            await authService.signOut();
+            setLoading(false);
+            return;
+          }
+          
+          if (vendorData.status !== 'approved') {
+            console.log('🚫 Vendor account not approved');
+            setError('🚫 Your vendor account is not approved. Please contact support.');
+            await authService.signOut();
+            setLoading(false);
+            return;
+          }
+          
+          console.log('✅ Vendor account approved, proceeding...');
+        }
+        
+        console.log('✅ All checks passed, login successful!');
         // Login successful - AppNavigator will handle routing based on user role
         // No alert needed, the navigation will happen automatically
       } else {
@@ -98,7 +185,7 @@ export const LoginScreen = ({ navigation, route }) => {
   };
 
   const handleSignUp = () => {
-    navigation.navigate('RegisterChoice');
+    navigation.navigate('SignupChooseRole');
   };
 
   const handleForgotPassword = () => {

@@ -10,6 +10,7 @@ import {
   Modal,
   TouchableWithoutFeedback
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
 import { CartContext } from '../../context/CartContext'; 
@@ -19,12 +20,35 @@ export const MenuScreen = ({ route, navigation }) => {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
-  const { cart, addToCart, updateQuantity, getCartTotals } = useContext(CartContext);
+  const { cart, addToCart, updateQuantity, clearCart, getCartTotals } = useContext(CartContext);
   const cartItems = cart.items;
   const totals = getCartTotals();
 
   useEffect(() => {
-    loadMenuItems();
+    // Check if cart has items from a different vendor
+    if (cart.vendor_id && cart.vendor_id !== vendor.id && cartItems.length > 0) {
+      Alert.alert(
+        'Different Vendor',
+        `You have items from ${cart.vendor_name} in your cart. Would you like to clear your cart and start a new order from ${vendor.business_name || vendor.canteen_name}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => navigation.goBack()
+          },
+          {
+            text: 'Clear Cart',
+            style: 'destructive',
+            onPress: () => {
+              clearCart();
+              loadMenuItems();
+            }
+          }
+        ]
+      );
+    } else {
+      loadMenuItems();
+    }
   }, []);
 
   const loadMenuItems = async () => {
@@ -61,7 +85,15 @@ export const MenuScreen = ({ route, navigation }) => {
       Alert.alert('Empty Cart', 'Please add items to your cart first');
       return;
     }
-    navigation.navigate('Checkout', { vendor, cartItems });
+    
+    // Use cart's vendor info, not the current screen's vendor
+    const cartVendor = {
+      id: cart.vendor_id,
+      business_name: cart.vendor_name,
+      canteen_name: cart.vendor_name
+    };
+    
+    navigation.navigate('Checkout', { vendor: cartVendor, cartItems });
   };
 
   const renderMenuItem = ({ item }) => {
@@ -121,15 +153,18 @@ export const MenuScreen = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <View style={styles.vendorInfo}>
-          <Text style={styles.vendorName}>{vendor.business_name || vendor.canteen_name}</Text>
-          <Text style={styles.vendorLocation}>{vendor.location || vendor.canteen_location}</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.vendorName} numberOfLines={1}>{vendor.business_name || vendor.canteen_name}</Text>
+            <Text style={styles.vendorLocation} numberOfLines={1}>{vendor.location || vendor.canteen_location}</Text>
+          </View>
+          <View style={styles.headerSpacer} />
         </View>
       </View>
 
@@ -227,7 +262,7 @@ export const MenuScreen = ({ route, navigation }) => {
                 </View>
 
                 <TouchableOpacity style={styles.closeButton} onPress={closeItemDetails}>
-                  <Text style={styles.closeButtonText}>Close</Text>
+                  <Ionicons name="close" size={24} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -241,154 +276,177 @@ export const MenuScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
-    paddingTop: SPACING.xl,
-    // paddingBottom: SPACING.xl
+    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
+    paddingTop: SPACING.xxl + SPACING.sm,
     paddingBottom: SPACING.md,
-    // fontSize: FONTS.medium
+    backgroundColor: COLORS.white,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backButton: {
-    marginBottom: SPACING.md,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  backButtonText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textSecondary,
-  },
-  vendorInfo: {
+  headerCenter: {
+    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+  },
+  headerSpacer: {
+    width: 40,
   },
   vendorName: {
-    fontSize: FONTS.large,
-    fontWeight: 'bold',
+    fontSize: FONTS.medium,
+    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   vendorLocation: {
-    fontSize: FONTS.small,
+    fontSize: FONTS.extraSmall,
     color: COLORS.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
   },
   menuList: {
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
+    paddingTop: SPACING.md,
   },
   menuListWithCart: {
-    paddingBottom: SPACING.xxl * 1.5,
+    paddingBottom: 100,
   },
   menuItem: {
     backgroundColor: COLORS.cardBackground,
-    padding: SPACING.xs,
-    borderRadius: BORDER_RADIUS.large,
-    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    marginBottom: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    minHeight: 70,
+    gap: SPACING.sm,
   },
   itemInfo: {
     flex: 1,
+    flexShrink: 1,
   },
   itemName: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.regular,
+    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    marginBottom: 2,
+    flexShrink: 1,
   },
   itemPriceLarge: {
-    fontSize: FONTS.large,
+    fontSize: FONTS.medium,
     fontWeight: 'bold',
     color: COLORS.success,
+    marginBottom: 2,
   },
   detailsHint: {
-    fontSize: FONTS.small,
+    fontSize: FONTS.extraSmall,
     color: COLORS.textMuted,
-    marginTop: SPACING.xs,
   },
   quantityContainer: {
-    marginLeft: SPACING.md,
+    flexShrink: 0,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.medium,
+    borderRadius: BORDER_RADIUS.small,
     paddingHorizontal: SPACING.xs,
+    paddingVertical: 4,
+    gap: SPACING.xs,
   },
   quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: BORDER_RADIUS.medium,
+    width: 28,
+    height: 28,
+    borderRadius: BORDER_RADIUS.small,
     backgroundColor: COLORS.buttonPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantityButtonText: {
-    fontSize: FONTS.medium,
+    fontSize: FONTS.regular,
     fontWeight: 'bold',
     color: COLORS.white,
   },
   quantityText: {
     fontSize: FONTS.regular,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.text,
-    marginHorizontal: SPACING.md,
-    minWidth: 30,
+    minWidth: 24,
     textAlign: 'center',
   },
   addButton: {
     backgroundColor: COLORS.buttonPrimary,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.medium,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.small,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addButtonText: {
-    fontSize: FONTS.regular,
+    fontSize: FONTS.small,
     fontWeight: 'bold',
     color: COLORS.white,
   },
   cartSummary: {
-    // position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
+    paddingBottom: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    gap: SPACING.md,
+    minHeight: 64,
   },
   cartInfo: {
     flex: 1,
+    flexShrink: 1,
   },
   cartItemCount: {
-    fontSize: FONTS.small,
+    fontSize: FONTS.extraSmall,
     color: COLORS.textSecondary,
+    marginBottom: 2,
   },
   cartTotal: {
-    fontSize: FONTS.medium,
+    fontSize: FONTS.regular,
     fontWeight: 'bold',
     color: COLORS.text,
+    flexShrink: 1,
   },
   checkoutButton: {
     backgroundColor: COLORS.buttonPrimary,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
     borderRadius: BORDER_RADIUS.medium,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   checkoutButtonText: {
     fontSize: FONTS.regular,
@@ -404,37 +462,44 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
+    maxWidth: 400,
     backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.large,
     padding: SPACING.xl,
-    gap: SPACING.md,
   },
   modalTitle: {
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.text,
+    marginBottom: SPACING.sm,
+    flexShrink: 1,
   },
   modalPrice: {
     fontSize: FONTS.medium,
     fontWeight: 'bold',
     color: COLORS.success,
+    marginBottom: SPACING.md,
   },
   modalDescription: {
     fontSize: FONTS.regular,
     color: COLORS.textSecondary,
+    marginBottom: SPACING.lg,
+    lineHeight: 22,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   closeButton: {
-    alignSelf: 'flex-end',
-    marginTop: SPACING.sm,
-  },
-  closeButtonText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textSecondary,
+    position: 'absolute',
+    top: SPACING.md,
+    right: SPACING.md,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyState: {
     alignItems: 'center',

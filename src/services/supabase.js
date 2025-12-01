@@ -74,5 +74,37 @@ export const userService = {
     }
     
     return { data: null, error: null };
+  },
+
+  // Get full user data including vendor/admin status
+  getUserData: async (authUserId) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        id,
+        auth_user_id,
+        email,
+        role,
+        status,
+        vendors (
+          id,
+          business_name,
+          status
+        ),
+        admins (
+          id
+        )
+      `)
+      .eq('auth_user_id', authUserId);
+    
+    if (error) {
+      return { data: null, error };
+    }
+    
+    if (Array.isArray(data) && data.length > 0) {
+      return { data: data[0], error: null };
+    }
+    
+    return { data: null, error: null };
   }
 };

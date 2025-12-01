@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/supabase';
@@ -56,6 +57,7 @@ export const OrdersScreen = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -99,76 +101,122 @@ export const OrdersScreen = ({ navigation }) => {
     loadOrders();
   };
 
-  const getNextStatus = (currentStatus) => {
-    switch (currentStatus) {
-      case 'scheduled':
-      case 'pending':
-        return 'preparing';
-      case 'preparing':
-        return 'ready';
-      case 'ready':
-        return 'completed';
-      default:
-        return currentStatus;
-    }
+  const handleCancelOrder = async (order) => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await apiService.orders.updateStatus(order.id, 'cancelled');
+              if (error) {
+                console.error('Error cancelling order:', error);
+                Alert.alert('Error', 'Failed to cancel order');
+                return;
+              }
+              Alert.alert('Success', 'Order cancelled successfully');
+              loadOrders();
+            } catch (err) {
+              console.error('Error cancelling order:', err);
+              Alert.alert('Error', 'Failed to cancel order');
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const handleAdvanceStatus = async (order) => {
-    const nextStatus = getNextStatus(order.status);
+  const renderOrderCard = ({ item }) => {
+    const isExpanded = expandedOrderId === item.id;
 
-    if (nextStatus === order.status) {
-      Alert.alert('Status', 'This order is already completed.');
-      return;
-    }
-
-    try {
-      const { error } = await apiService.orders.updateStatus(order.id, nextStatus);
-      if (error) {
-        console.error('Error updating order status:', error);
-        Alert.alert('Error', 'Failed to update order status');
-        return;
-      }
-
-      // Refresh list to reflect new status
-      loadOrders();
-    } catch (err) {
-      console.error('Unexpected error updating status:', err);
-      Alert.alert('Error', 'Unexpected error updating status');
-    }
-  };
-
-  const renderOrderCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.orderCard}
-      onPress={() => {}}
-    >
-      <View style={styles.orderHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+    return (
+      <TouchableOpacity 
+        style={styles.orderCard}
+        activeOpacity={0.9}
+        onPress={() => setExpandedOrderId(isExpanded ? null : item.id)}
+      >
+        <View style={styles.orderHeader}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+          </View>
+          <Text style={styles.orderNumber}>
+            #{item.order_number || item.id.slice(0, 8)}
+          </Text>
         </View>
-      </View>
-      
-      <Text style={styles.vendorName}>{item.vendor?.business_name || item.vendor?.canteen_name || 'Vendor'}</Text>
-      <Text style={styles.orderDate}>{formatDateTime(item.created_at)}</Text>
-      
-      <View style={styles.orderDetails}>
-        <Text style={styles.pickupLocation}>📍 {item.pickup_location || item.pickup_location_name || 'Pickup location'}</Text>
-        <Text style={styles.pickupTime}>🕐 {item.time_slot || item.pickup_time || 'Time slot'}</Text>
-      </View>
-      
-      <View style={styles.orderFooter}>
-        <Text style={styles.totalAmount}>
-          Rp {(item.total || item.total_amount || 0).toLocaleString()}
-        </Text>
-        <TouchableOpacity
-          style={styles.advanceButton}
-          onPress={() => handleAdvanceStatus(item)}
-        >
-          <Text style={styles.advanceButtonText}>Advance Status</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+        
+        <Text style={styles.vendorName}>{item.vendor?.business_name || item.vendor?.canteen_name || 'Vendor'}</Text>
+        <Text style={styles.orderDate}>{formatDateTime(item.created_at)}</Text>
+        
+        <View style={styles.orderDetails}>
+          <Text style={styles.pickupLocation}>
+            📍 {item.pickup_location?.name || item.pickup_location_name || 'Pickup location'}
+          </Text>
+          <Text style={styles.pickupTime}>
+            🕐 {item.time_slot || item.pickup_time || 'Time slot'}
+          </Text>
+        </View>
+
+        {isExpanded && (
+          <View style={styles.expandedSection}>
+            <Text style={styles.sectionTitle}>Order Items</Text>
+            {item.order_items && item.order_items.length > 0 ? (
+              item.order_items.map((orderItem) => (
+                <View key={orderItem.id} style={styles.itemRow}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {orderItem.quantity}x {orderItem.menu_item?.name || 'Item'}
+                    </Text>
+                    {orderItem.special_instructions ? (
+                      <Text style={styles.itemNote} numberOfLines={2}>
+                        
+                        {orderItem.special_instructions}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.itemPrice}>
+                    Rp {(orderItem.total_price || 0).toLocaleString()}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyItemsText}>No items found for this order.</Text>
+            )}
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+              <Text style={styles.summaryValue}>Rp {(item.subtotal || 0).toLocaleString()}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Service Fee</Text>
+              <Text style={styles.summaryValue}>Rp {(item.service_fee || 0).toLocaleString()}</Text>
+            </View>
+            <View style={styles.summaryRowTotal}>
+              <Text style={styles.summaryTotalLabel}>Total Paid</Text>
+              <Text style={styles.summaryTotalValue}>Rp {(item.total || item.total_amount || 0).toLocaleString()}</Text>
+            </View>
+          </View>
+        )}
+        
+        <View style={styles.orderFooter}>
+          <Text style={styles.totalAmount}>
+            Rp {(item.total || item.total_amount || 0).toLocaleString()}
+          </Text>
+          {(item.status === 'pending' || item.status === 'scheduled') && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleCancelOrder(item)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel Order</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -188,10 +236,13 @@ export const OrdersScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('StudentHome')}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>My Orders</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>My Orders</Text>
+          <View style={styles.headerSpacer} />
+        </View>
       </View>
 
       <FlatList
@@ -212,25 +263,34 @@ export const OrdersScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
+    paddingTop: SPACING.xxl + SPACING.sm,
     paddingBottom: SPACING.md,
+    backgroundColor: COLORS.white,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
   title: {
-    fontSize: FONTS.large,
-    fontWeight: 'bold',
+    fontSize: FONTS.medium,
+    fontWeight: '600',
     color: COLORS.text,
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
-  backText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textSecondary,
+  headerSpacer: {
+    width: 40,
   },
   listContainer: {
     paddingHorizontal: SPACING.xl,
@@ -238,29 +298,37 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.large,
-    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  orderNumber: {
+    fontSize: FONTS.extraSmall,
+    color: COLORS.textSecondary,
+    flexShrink: 1,
   },
   statusBadge: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.small,
-    maxWidth: '80%',
+    flexShrink: 0,
   },
   statusText: {
     fontSize: FONTS.extraSmall,
@@ -270,10 +338,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   vendorName: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.regular,
+    fontWeight: '600',
     color: COLORS.text,
     marginBottom: SPACING.xs,
+    flexShrink: 1,
   },
   orderDate: {
     fontSize: FONTS.small,
@@ -287,10 +356,12 @@ const styles = StyleSheet.create({
     fontSize: FONTS.small,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    flexWrap: 'wrap',
   },
   pickupTime: {
     fontSize: FONTS.small,
     color: COLORS.textSecondary,
+    flexWrap: 'wrap',
   },
   orderFooter: {
     flexDirection: 'row',
@@ -299,22 +370,29 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
+    gap: SPACING.sm,
   },
   totalAmount: {
     fontSize: FONTS.medium,
     fontWeight: 'bold',
     color: COLORS.success,
+    flexShrink: 1,
   },
-  advanceButton: {
+  cancelButton: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
+    paddingVertical: SPACING.sm,
     borderRadius: BORDER_RADIUS.small,
-    backgroundColor: COLORS.buttonPrimary,
+    backgroundColor: COLORS.error,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
-  advanceButtonText: {
+  cancelButtonText: {
     fontSize: FONTS.extraSmall,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
@@ -325,10 +403,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   emptyStateTitle: {
-    fontSize: FONTS.large,
+    fontSize: FONTS.medium,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   emptyStateText: {
     fontSize: FONTS.regular,
@@ -342,10 +420,85 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.medium,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   browseButtonText: {
     fontSize: FONTS.regular,
     fontWeight: 'bold',
     color: COLORS.white,
+  },
+  expandedSection: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  sectionTitle: {
+    fontSize: FONTS.small,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.xs,
+  },
+  itemInfo: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+    flexShrink: 1,
+  },
+  itemName: {
+    fontSize: FONTS.small,
+    color: COLORS.text,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  itemNote: {
+    fontSize: FONTS.extraSmall,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  itemPrice: {
+    fontSize: FONTS.small,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  emptyItemsText: {
+    fontSize: FONTS.extraSmall,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.xs,
+  },
+  summaryRowTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.sm,
+  },
+  summaryLabel: {
+    fontSize: FONTS.extraSmall,
+    color: COLORS.textSecondary,
+  },
+  summaryValue: {
+    fontSize: FONTS.extraSmall,
+    color: COLORS.text,
+  },
+  summaryTotalLabel: {
+    fontSize: FONTS.small,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  summaryTotalValue: {
+    fontSize: FONTS.small,
+    fontWeight: 'bold',
+    color: COLORS.success,
   },
 });

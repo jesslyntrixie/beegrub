@@ -36,27 +36,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 3,
     elevation: 3,
+    minHeight: 90,
+    gap: 12,
   },
   content: {
     flex: 1,
+    flexShrink: 1,
   },
   name: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
+    flexShrink: 1,
   },
   description: {
     fontSize: 12,
     color: colors.textLight,
     marginBottom: 6,
+    flexWrap: 'wrap',
   },
   location: {
     fontSize: 12,
     color: colors.textLight,
+    flexWrap: 'wrap',
   },
   arrow: {
-    marginLeft: 12,
+    flexShrink: 0,
   },
   arrowText: {
     fontSize: 18,

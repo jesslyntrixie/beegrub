@@ -9,6 +9,8 @@ import {
   Alert,
   TextInput
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
 import { authService, supabase } from '../../services/supabase';
@@ -23,6 +25,7 @@ export const CheckoutScreen = ({ route, navigation }) => {
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+  const [pickupDate, setPickupDate] = useState('today'); // 'today' or 'tomorrow'
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,11 +35,11 @@ export const CheckoutScreen = ({ route, navigation }) => {
         const [{ data: locations, error: locError }, { data: slots, error: slotError }] = await Promise.all([
           supabase
             .from('pickup_locations')
-            .select('id, name')
+            .select('id, name, floor')
             .eq('is_active', true),
           supabase
             .from('time_slots')
-            .select('id, time_range')
+            .select('id, time_range, start_time, end_time')
             .eq('is_active', true),
         ]);
 
@@ -57,88 +60,165 @@ export const CheckoutScreen = ({ route, navigation }) => {
     loadReferenceData();
   }, []);
 
+  const calculateServiceFee = () => {
+    if (!selectedLocation) return 0;
+
+    const floor = selectedLocation.floor || 1;
+    const cappedFloor = Math.min(Math.max(floor, 1), 9);
+    const baseFee = 2500;
+    const floorFee = (cappedFloor - 1) * 200;
+
+    return baseFee + floorFee;
+  };
+
   const getTotalPrice = () => {
-    return totals.total;
+    const serviceFee = calculateServiceFee();
+    return totals.subtotal + serviceFee;
+  };
+
+  const getFilteredTimeSlots = () => {
+    const baseDate = new Date();
+    const targetDate = new Date(baseDate);
+    if (pickupDate === 'tomorrow') {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    const day = targetDate.getDay(); // 0 = Sun, 6 = Sat
+
+    // No orders on Sunday
+    if (day === 0) return [];
+
+    return timeSlots.filter((slot) => {
+      if (!slot.time_range) return false;
+      const startLabel = slot.time_range.split('-')[0];
+
+      // Saturday: only up to 13:00
+      if (day === 6) {
+        return ['09:00', '11:00', '13:00'].includes(startLabel);
+      }
+
+      // Weekdays: allow all standard slots
+      const allowed = ['09:00', '11:00', '13:00', '15:00', '17:00'].includes(startLabel);
+      if (!allowed) return false;
+
+      // Hide slots that are already in the past or within 2 hours from now
+      const [hours, minutes] = startLabel.split(':').map((n) => parseInt(n, 10));
+      const slotDateTime = new Date(targetDate);
+      slotDateTime.setHours(hours, minutes, 0, 0);
+
+      const diffMs = slotDateTime.getTime() - baseDate.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      return diffHours >= 2;
+    });
+  };
+
+  const parseSlotStartDateTime = () => {
+    if (!selectedTimeSlot?.time_range) return null;
+
+    const baseDate = new Date();
+    const targetDate = new Date(baseDate);
+    if (pickupDate === 'tomorrow') {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    const [startStr] = selectedTimeSlot.time_range.split('-'); // e.g. "13:00"
+    const [hours, minutes] = startStr.split(':').map((n) => parseInt(n, 10));
+
+    const dt = new Date(targetDate);
+    dt.setHours(hours, minutes, 0, 0);
+    return dt;
   };
 
   const handlePlaceOrder = async () => {
     if (!selectedLocation || !selectedTimeSlot) {
-      Alert.alert('Missing Information', 'Please select pickup location and time');
+      Alert.alert('Missing Information', 'Please select pickup date, location, and time');
       return;
     }
 
-    setLoading(true);
-    try {
-      const authUser = await authService.getCurrentUser();
-      if (!authUser) {
-        Alert.alert('Error', 'Please login again');
-        return;
-      }
-
-      // Look up the application user (and thus student) linked to this auth user
-      const { data: appUser, error: userError } = await apiService.users.getByAuthUserId(authUser.id);
-
-      if (userError || !appUser) {
-        console.error('Error fetching app user:', userError);
-        Alert.alert('Error', 'Failed to find student profile for this account.');
-        return;
-      }
-
-      // Create order (schema-aligned)
-      const orderData = {
-        // student_id must reference students.id, which matches users.id
-        student_id: appUser.id,
-        vendor_id: vendor.id,
-        pickup_location_id: selectedLocation.id,
-        order_type: 'pre_order',
-        subtotal: totals.subtotal,
-        service_fee: totals.serviceFee,
-        total: totals.total,
-        status: 'scheduled',
-        // For MVP we keep it simple: current date + chosen time slot label
-        scheduled_pickup_time: new Date().toISOString(),
-        time_slot: selectedTimeSlot.time_range,
-        special_instructions: notes || null,
-      };
-
-      const { data, error } = await apiService.orders.create(orderData);
-      
-      if (error) {
-        Alert.alert('Order Error', error.message);
-        return;
-      }
-
-      Alert.alert(
-        'Order Placed!', 
-        'Your order has been placed successfully. You will receive a notification when it\'s ready for pickup.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              clearCart();
-              navigation.navigate('Orders');
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Order error:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
+    // Build actual pickup calendar date from selection
+    const baseDate = new Date();
+    const pickupDateObj = new Date(baseDate);
+    if (pickupDate === 'tomorrow') {
+      pickupDateObj.setDate(pickupDateObj.getDate() + 1);
     }
+
+    // Validate day of week (Mon-Sat only)
+    const day = pickupDateObj.getDay();
+    if (day === 0) {
+      Alert.alert('Unavailable', 'Orders are only available Monday to Saturday.');
+      return;
+    }
+
+    const pickupDateTime = parseSlotStartDateTime();
+    if (!pickupDateTime) {
+      Alert.alert('Invalid Time', 'Could not determine the selected pickup time.');
+      return;
+    }
+
+    const now = new Date();
+    const diffMs = pickupDateTime.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    if (diffHours < 2) {
+      Alert.alert(
+        'Too Soon',
+        'Please choose a pickup time at least 2 hours from now.'
+      );
+      return;
+    }
+
+    // Navigate to payment selection screen
+    const serviceFee = calculateServiceFee();
+    const total = totals.subtotal + serviceFee;
+
+    navigation.navigate('PaymentMethod', {
+      orderSummary: {
+        // Vendor details
+        vendorId: vendor?.id,
+        vendorName: vendor?.business_name || vendor?.canteen_name,
+        vendorLocation: vendor?.location,
+        vendor,
+
+        // Cart + pricing
+        items: cartItems,
+        cartItems,
+        subtotal: totals.subtotal,
+        serviceFee: serviceFee,
+        total,
+
+        // Pickup info
+        pickupLocationId: selectedLocation?.id,
+        pickupLocationName: selectedLocation?.name,
+        pickupLocationFloor: selectedLocation?.floor,
+        pickupLocation: selectedLocation,
+        pickupTime: pickupDateTime.toISOString(),
+        pickupDate,
+        timeSlot: selectedTimeSlot?.time_range,
+        timeSlotId: selectedTimeSlot?.id,
+        selectedTimeSlot,
+        notes,
+        specialInstructions: notes?.trim() ? notes.trim() : null,
+
+        // Generated order metadata
+        orderNumber: `BG-${Date.now()}`,
+      }
+    });
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Checkout</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Checkout</Text>
+          <View style={styles.headerSpacer} />
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -157,6 +237,18 @@ export const CheckoutScreen = ({ route, navigation }) => {
               </View>
             ))}
             <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalAmount}>
+                Rp {totals.subtotal.toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Service Fee</Text>
+              <Text style={styles.totalAmount}>
+                Rp {calculateServiceFee().toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalAmount}>
                 Rp {getTotalPrice().toLocaleString()}
@@ -165,53 +257,84 @@ export const CheckoutScreen = ({ route, navigation }) => {
           </View>
         </View>
 
+        {/* Pickup Date */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pickup Date</Text>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={pickupDate}
+              onValueChange={(value) => setPickupDate(value)}
+            >
+              {(() => {
+                const base = new Date();
+                const todayLabel = `${base.toLocaleDateString()}`;
+                const tomorrowDate = new Date(base);
+                tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+                const tomorrowLabel = `${tomorrowDate.toLocaleDateString()}`;
+                return [
+                  <Picker.Item
+                    key="today"
+                    label={`Today (${todayLabel})`}
+                    value="today"
+                  />,
+                  <Picker.Item
+                    key="tomorrow"
+                    label={`Tomorrow (${tomorrowLabel})`}
+                    value="tomorrow"
+                  />,
+                ];
+              })()}
+            </Picker>
+          </View>
+          <Text style={styles.dateInfoTextSmall}>
+            Orders are available Monday to Saturday. Time slots adjust based on your chosen day.
+          </Text>
+        </View>
+
         {/* Pickup Location */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Location</Text>
-          {pickupLocations.map((location) => (
-            <TouchableOpacity
-              key={location.id}
-              style={[
-                styles.optionButton,
-                selectedLocation?.id === location.id && styles.selectedOption
-              ]}
-              onPress={() => setSelectedLocation(location)}
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={selectedLocation?.id || ''}
+              onValueChange={(value) => {
+                const loc = pickupLocations.find((l) => l.id === value) || null;
+                setSelectedLocation(loc);
+              }}
             >
-              <Text
-                style={[
-                  styles.optionText,
-                  selectedLocation?.id === location.id && styles.selectedOptionText,
-                ]}
-              >
-                {location.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              <Picker.Item label="Select pickup location" value="" />
+              {pickupLocations.map((location) => (
+                <Picker.Item
+                  key={location.id}
+                  label={location.name}
+                  value={location.id}
+                />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         {/* Pickup Time */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Time</Text>
-          <View style={styles.timeGrid}>
-            {timeSlots.map((slot) => (
-              <TouchableOpacity
-                key={slot.id}
-                style={[
-                  styles.timeButton,
-                  selectedTimeSlot?.id === slot.id && styles.selectedTime,
-                ]}
-                onPress={() => setSelectedTimeSlot(slot)}
-              >
-                <Text
-                  style={[
-                    styles.timeText,
-                    selectedTimeSlot?.id === slot.id && styles.selectedTimeText,
-                  ]}
-                >
-                  {slot.time_range}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={selectedTimeSlot?.id || ''}
+              onValueChange={(value) => {
+                const slots = getFilteredTimeSlots();
+                const slot = slots.find((s) => s.id === value) || null;
+                setSelectedTimeSlot(slot);
+              }}
+            >
+              <Picker.Item label="Select pickup time" value="" />
+              {getFilteredTimeSlots().map((slot) => (
+                <Picker.Item
+                  key={slot.id}
+                  label={slot.time_range}
+                  value={slot.id}
+                />
+              ))}
+            </Picker>
           </View>
         </View>
 
@@ -238,7 +361,7 @@ export const CheckoutScreen = ({ route, navigation }) => {
           disabled={loading}
         >
           <Text style={styles.placeOrderButtonText}>
-            {loading ? 'Placing Order...' : `Place Order - Rp ${getTotalPrice().toLocaleString()}`}
+            Continue to Payment - Rp {getTotalPrice().toLocaleString()}
           </Text>
         </TouchableOpacity>
       </View>
@@ -249,50 +372,75 @@ export const CheckoutScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
+    paddingTop: SPACING.xxl + SPACING.sm,
     paddingBottom: SPACING.md,
+    backgroundColor: COLORS.white,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backButton: {
-    marginBottom: SPACING.md,
-  },
-  backButtonText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textSecondary,
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.medium,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   title: {
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.text,
+    letterSpacing: -0.3,
     textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
   },
   content: {
     flex: 1,
     paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
   },
   section: {
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SPACING.md,
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    letterSpacing: 0.3,
   },
   orderSummary: {
     backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.large,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   vendorName: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.regular,
+    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.md,
-    paddingBottom: SPACING.md,
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
@@ -300,15 +448,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   itemName: {
-    fontSize: FONTS.regular,
+    fontSize: FONTS.small,
     color: COLORS.text,
     flex: 1,
   },
   itemPrice: {
-    fontSize: FONTS.regular,
+    fontSize: FONTS.small,
     fontWeight: '500',
     color: COLORS.text,
   },
@@ -316,28 +464,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: SPACING.md,
-    marginTop: SPACING.md,
+    paddingTop: SPACING.sm,
+    marginTop: SPACING.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
   },
   totalLabel: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.small,
+    fontWeight: '600',
     color: COLORS.text,
   },
   totalAmount: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.small,
+    fontWeight: '600',
     color: COLORS.success,
   },
   optionButton: {
     backgroundColor: COLORS.white,
-    padding: SPACING.lg,
+    padding: SPACING.md,
     borderRadius: BORDER_RADIUS.medium,
     marginBottom: SPACING.sm,
-    borderWidth: 2,
-    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   selectedOption: {
     borderColor: COLORS.buttonPrimary,
@@ -347,24 +498,34 @@ const styles = StyleSheet.create({
     fontSize: FONTS.regular,
     color: COLORS.text,
     textAlign: 'center',
+    flexShrink: 1,
   },
   selectedOptionText: {
     color: COLORS.white,
     fontWeight: 'bold',
   },
+  pickerWrapper: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    overflow: 'hidden',
+  },
   timeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
   timeButton: {
-    width: '30%',
+    width: '31%',
     backgroundColor: COLORS.white,
-    padding: SPACING.md,
+    padding: SPACING.sm,
     borderRadius: BORDER_RADIUS.medium,
-    marginBottom: SPACING.sm,
-    borderWidth: 2,
-    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   selectedTime: {
     borderColor: COLORS.buttonPrimary,
@@ -382,38 +543,73 @@ const styles = StyleSheet.create({
   },
   notesInput: {
     backgroundColor: COLORS.white,
-    padding: SPACING.lg,
+    padding: SPACING.md,
     borderRadius: BORDER_RADIUS.medium,
     fontSize: FONTS.regular,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.borderLight,
     minHeight: 80,
   },
   footer: {
     backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.lg,
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
   },
   placeOrderButton: {
     backgroundColor: COLORS.buttonPrimary,
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.medium,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   disabledButton: {
     opacity: 0.6,
   },
   placeOrderButtonText: {
-    fontSize: FONTS.medium,
+    fontSize: FONTS.regular,
     fontWeight: 'bold',
     color: COLORS.white,
+  },
+  dateDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  dateDropdownContent: {
+    flexDirection: 'column',
+    flex: 1,
+    flexShrink: 1,
+  },
+  dateDropdownLabel: {
+    fontSize: FONTS.small,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  dateDropdownValue: {
+    fontSize: FONTS.regular,
+    color: COLORS.text,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  dateDropdownArrow: {
+    fontSize: FONTS.medium,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.sm,
+    flexShrink: 0,
+  },
+  dateInfoTextSmall: {
+    fontSize: FONTS.small,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
   },
 });

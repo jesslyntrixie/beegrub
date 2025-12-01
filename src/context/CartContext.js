@@ -100,7 +100,7 @@ export const CartProvider = ({ children }) => {
   const getCartTotals = useCallback(() => {
     const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const serviceFee = itemCount * 3000; // 3000 IDR per item
+    const serviceFee = 0
     const total = subtotal + serviceFee;
 
     return {

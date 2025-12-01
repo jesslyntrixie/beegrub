@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { COLORS } from '../../constants/theme';
 
 export default function ConfirmEmailScreen({ navigation, route }) {
   const { email } = route.params || {};
@@ -132,16 +132,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   loginButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
+    backgroundColor: '#000000',
+    paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 8,
     width: '100%',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.5)',
   },
   loginButtonText: {
-    color: COLORS.white,
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/supabase';
@@ -120,20 +121,21 @@ export const StudentHomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.greeting}>Welcome back!</Text>
-          <Text style={styles.userName}>
-            {user?.user_metadata?.full_name || 'Student'}
-          </Text>
+          <Text style={styles.greeting}>Hi, {user?.user_metadata?.full_name?.split(' ')[0] || 'Student'}!</Text>
+          <Text style={styles.subtitle}>What would you like to order today?</Text>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Orders')} 
-            style={styles.ordersButton}
+            onPress={() => navigation.navigate('Profile')} 
+            style={styles.iconButton}
           >
-            <Text style={styles.ordersText}>My Orders</Text>
+            <Ionicons name="person-outline" size={20} color={COLORS.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Orders')} 
+            style={styles.iconButton}
+          >
+            <Ionicons name="receipt-outline" size={20} color={COLORS.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -160,120 +162,117 @@ export const StudentHomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingTop: SPACING.xxl + SPACING.sm,
+    paddingBottom: SPACING.md,
+    backgroundColor: COLORS.white,
   },
   headerTextContainer: {
     flex: 1,
-    paddingRight: SPACING.lg,
+    paddingRight: SPACING.md,
   },
   greeting: {
-    fontSize: FONTS.regular,
-    color: COLORS.textSecondary,
-  },
-  userName: {
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.text,
-    flexShrink: 1,
-    flexWrap: 'wrap',
+    marginBottom: 2,
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: FONTS.small,
+    color: COLORS.textSecondary,
+    fontWeight: '400',
   },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: SPACING.sm,
-    flexShrink: 0,
+    gap: SPACING.xs,
   },
-  ordersButton: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.info,
+  iconButton: {
+    width: 40,
+    height: 40,
     borderRadius: BORDER_RADIUS.medium,
-  },
-  ordersText: {
-    fontSize: FONTS.small,
-    color: COLORS.white,
-    fontWeight: '500',
-  },
-  logoutButton: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.medium,
-  },
-  logoutText: {
-    fontSize: FONTS.small,
-    color: COLORS.error,
-    fontWeight: '500',
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   content: {
     flex: 1,
     paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
+    backgroundColor: COLORS.background,
   },
   sectionTitle: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SPACING.lg,
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+    letterSpacing: 0.3,
   },
   vendorCard: {
     backgroundColor: COLORS.cardBackground,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.large,
-    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
+    marginBottom: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   vendorInfo: {
     flex: 1,
+    flexShrink: 1,
   },
   vendorName: {
-    fontSize: FONTS.medium,
-    fontWeight: 'bold',
+    fontSize: FONTS.regular,
+    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    marginBottom: 2,
+    flexShrink: 1,
   },
   vendorLocation: {
     fontSize: FONTS.small,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
+    flexWrap: 'wrap',
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginRight: SPACING.xs,
   },
   statusText: {
-    fontSize: FONTS.small,
+    fontSize: FONTS.extraSmall,
     color: COLORS.success,
     fontWeight: '500',
   },
   arrowContainer: {
-    marginLeft: SPACING.md,
+    marginLeft: SPACING.sm,
   },
   arrow: {
-    fontSize: FONTS.medium,
-    color: COLORS.textSecondary,
+    fontSize: 20,
+    color: COLORS.textMuted,
   },
   emptyContainer: {
     flex: 1,
@@ -293,5 +292,7 @@ const styles = StyleSheet.create({
     fontSize: FONTS.regular,
     color: COLORS.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: SPACING.md,
+    lineHeight: 22,
   },
 });

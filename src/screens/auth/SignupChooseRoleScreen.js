@@ -1,71 +1,73 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export const SignupChooseRoleScreen = ({ navigation }) => {
   const handleStudentSignup = () => {
-    // Navigate to student registration
-    navigation.navigate('RegisterScreen', { role: 'student' });
+    navigation.navigate('Register', { userType: 'student' });
   };
 
   const handleVendorSignup = () => {
-    // Navigate to vendor registration
-    navigation.navigate('RegisterScreen', { role: 'vendor' });
+    navigation.navigate('Register', { userType: 'vendor' });
   };
 
   return (
-    <View style={styles.container}>
-      {/* Title Section */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>SignUp</Text>
-        <Text style={styles.subtitle}>"I'm signing up as a…"</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Choose your account type to get started</Text>
+        </View>
+
+        {/* Role Selection Cards */}
+        <View style={styles.cardsContainer}>
+          {/* Student Card */}
+          <TouchableOpacity 
+            style={[styles.roleCard, styles.studentCard]}
+            onPress={handleStudentSignup}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name="person-outline" size={48} color="#007AFF" />
+            </View>
+            <Text style={styles.roleTitle}>Student</Text>
+            <Text style={styles.roleDescription}>
+              Order food from campus canteens and skip the line
+            </Text>
+            <View style={styles.selectButton}>
+              <Text style={styles.selectButtonText}>Continue as Student</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Vendor Card */}
+          <TouchableOpacity 
+            style={[styles.roleCard, styles.vendorCard]}
+            onPress={handleVendorSignup}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name="storefront-outline" size={48} color="#34C759" />
+            </View>
+            <Text style={styles.roleTitle}>Canteen Partner</Text>
+            <Text style={styles.roleDescription}>
+              Manage your canteen and reach more students
+            </Text>
+            <View style={styles.selectButton}>
+              <Text style={styles.selectButtonText}>Continue as Vendor</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.linkText}>Login here</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Foodies Card */}
-      <TouchableOpacity style={styles.foodiesCard} onPress={handleStudentSignup}>
-        <Image 
-          source={require('../../../assets/student-card.png')} // Using banner as placeholder
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-        
-        {/* Card Content Overlay */}
-        <View style={styles.cardOverlay}>
-          <Text style={styles.cardTopText}>Order & Grab</Text>
-          <Text style={styles.cardRoleText}>Foodies</Text>
-          <Text style={styles.cardDescription}>
-            Pre-order lunch and{'\n'}skip the line.
-          </Text>
-          
-          <View style={styles.signupButton}>
-            <Text style={styles.signupButtonText}>Sign Up</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-
-      {/* Canteen Partner Card */}
-      <TouchableOpacity style={styles.canteenCard} onPress={handleVendorSignup}>
-        <Image 
-          source={require('../../../assets/vendor-card.png')} // Using icon as placeholder
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-        
-        {/* Card Content Overlay */}
-        <View style={styles.cardOverlay}>
-          <Text style={styles.cardTopText}>Serve & Grow</Text>
-          <Text style={styles.cardRoleText}>Canteen Partner</Text>
-          <Text style={styles.cardDescription}>
-            Manage orders and{'\n'}reach more students.
-          </Text>
-          
-          <View style={styles.signupButton}>
-            <Text style={styles.signupButtonText}>Sign Up</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -73,147 +75,115 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 40, // Much smaller top padding
-    paddingBottom: 20,
-    alignItems: 'center',
-    justifyContent: 'center', // Center everything vertically
+    paddingVertical: 20,
+    justifyContent: 'center',
   },
   
-  // Title Section
-  titleContainer: {
+  // Header
+  header: {
     alignItems: 'center',
-    marginBottom: 24, // Much smaller margin
-    paddingHorizontal: 20, // Less horizontal padding
+    marginBottom: 40,
   },
   title: {
-    fontSize: 24, // Much smaller than 48px
+    fontSize: 28,
     fontWeight: '400',
     color: '#000000',
+    marginBottom: 8,
     textAlign: 'center',
-    marginBottom: 8, // Smaller margin
-    fontFamily: 'System',
   },
   subtitle: {
-    fontSize: 14, // Much smaller than 24px
-    fontWeight: '400',
+    fontSize: 14,
     color: '#363434',
     textAlign: 'center',
-    fontFamily: 'System',
+    lineHeight: 20,
   },
 
-  // Card Styles
-  foodiesCard: {
-    width: Math.min(280, width * 0.85), // Responsive width, smaller than 320px
-    height: 200, // Much smaller height than 315px
+  // Cards Container
+  cardsContainer: {
+    gap: 20,
+    marginBottom: 32,
+  },
+
+  // Role Card
+  roleCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.5)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  studentCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  vendorCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#34C759',
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
     alignSelf: 'center',
-    marginBottom: 16, // Smaller margin than 30px
-    borderRadius: 12, // Slightly smaller radius
-    overflow: 'hidden',
-    // Use boxShadow for web compatibility
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 5,
-      },
-      web: {
-        boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)',
-      },
-    }),
+    marginBottom: 12,
   },
-  
-  canteenCard: {
-    width: Math.min(280, width * 0.85), // Responsive width, smaller than 320px
-    height: 200, // Much smaller height than 315px
-    alignSelf: 'center',
-    borderRadius: 12, // Slightly smaller radius
-    overflow: 'hidden',
-    // Use boxShadow for web compatibility
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 5,
-      },
-      web: {
-        boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)',
-      },
-    }),
-  },
-
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-
-  // Card Overlay Content
-  cardOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Slightly darker for better text contrast
-    justifyContent: 'space-between',
-    padding: 16, // Smaller padding
-  },
-
-  cardTopText: {
-    color: '#ffffff',
-    fontSize: 14, // Smaller than 18px
-    fontWeight: '400',
-    fontFamily: 'System',
-  },
-
-  cardRoleText: {
-    color: '#ffffff',
-    fontSize: 16, // Smaller than 18px
-    fontWeight: '600', // Slightly bolder for emphasis
-    textAlign: 'center',
-    position: 'absolute',
-    top: 70, // Adjusted for smaller card height
-    left: 0,
-    right: 0,
-    fontFamily: 'System',
-  },
-
-  cardDescription: {
-    color: '#ffffff',
-    fontSize: 12, // Smaller than 14px
-    fontWeight: '400',
-    textAlign: 'center',
-    position: 'absolute',
-    top: 95, // Adjusted for smaller card height
-    left: 16, // Adjusted for smaller padding
-    right: 16,
-    fontFamily: 'System',
-  },
-
-  signupButton: {
-    borderWidth: 1,
-    borderColor: '#ffffff',
-    borderRadius: 20, // Smaller radius
-    paddingVertical: 6, // Smaller padding
-    paddingHorizontal: 24, // Smaller horizontal padding
-    alignSelf: 'center',
-    position: 'absolute',
-    bottom: 16, // Adjusted for smaller card
-    left: 0,
-    right: 0,
-    marginHorizontal: 60, // Less margin
-  },
-
-  signupButtonText: {
-    color: '#ffffff',
-    fontSize: 12, // Smaller than 15px
+  roleTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#000000',
     textAlign: 'center',
-    fontFamily: 'System',
+    marginBottom: 6,
+  },
+  roleDescription: {
+    fontSize: 13,
+    color: '#636363',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  selectButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#363434',
+  },
+  linkText: {
+    fontSize: 12,
+    color: '#363434',
+    fontWeight: '400',
   },
 });

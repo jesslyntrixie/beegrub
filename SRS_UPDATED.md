@@ -164,9 +164,6 @@ Admin Panel:
 - Student provides:
   - ✅ Food items + quantities
   - ✅ Order type (pre-order OR live)
-  - ✅ Pickup time (if pre-order)
-  - ✅ Pickup location (from 4 preset campus locations)
-  - ✅ Special instructions (optional, e.g., "No onion")
 - System displays:
   - Order summary (all items)
   - Subtotal (sum of prices)
@@ -174,12 +171,6 @@ Admin Panel:
   - **Total price**
 - Student must confirm before payment
 
-#### FR-2.6: Price Transparency
-**NEW (from discussion):** Pricing model is transparent:
-
-```
-Menu Item (Nasi Padang)        = 25,000 IDR
-+ Menu Item (Es Teh)           = 5,000 IDR
 ─────────────────────────────────────
 Subtotal                       = 30,000 IDR
 + Service Fee (2 items × 3k)   = 6,000 IDR
@@ -189,20 +180,13 @@ TOTAL                          = 36,000 IDR
 
 - NO hidden taxes or markups
 - Service fee = 3000 IDR per item (transparent cost)
-- Student sees this breakdown BEFORE payment
-
----
-
-### 3.3 Payment System (F3.0)
 
 **Requirement:** Digital, secure payment processing
-
 #### FR-3.1: Payment Methods
 - Minimum: QRIS (QR Code Indonesian Standard)
 - Optional: E-wallet (GCash, OVO, Dana in Phase 2)
 - MVP: Mock payment for testing (real integration Phase 3)
 
-#### FR-3.2: Payment Flow
 1. Student reviews order → taps "Pay"
 2. Student selects payment method
 3. System shows payment confirmation dialog
@@ -210,17 +194,9 @@ TOTAL                          = 36,000 IDR
 5. System processes payment (mock confirms instantly)
 6. ✅ Order created in database
 7. ✅ Confirmation screen shown
-
-#### FR-3.3: Order Creation
-After successful payment, system automatically:
-- Creates `orders` record with:
-  - Order number (auto-generated format: "BG-YYYYMMDD-###")
-  - Student ID, Vendor ID, Pickup location, Time slot
-  - Order type (pre_order or live_order)
   - Subtotal, service fee, total
   - Status: "confirmed"
   - Timestamps
-- Creates `order_items` records (one per cart item)
 - Creates `payments` record (amount, method, timestamp)
 
 #### FR-3.4: Payment Confirmation
