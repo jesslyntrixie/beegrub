@@ -1,253 +1,246 @@
-# BeeGrub - Campus Food Pre-Order App
+# BeeGrub (Mobile App)
 
-BeeGrub is a hyper-local digital platform designed as a canteen food pre-order and pickup solution specifically for the BINUS Anggrek Campus ecosystem.
+BeeGrub is a campus food pre‑order and pickup app for the BINUS Anggrek ecosystem. Students, vendors, and admins access the same mobile app with different views based on their role.
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI
-- React Native development environment
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd BeeGrubApp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up Supabase**
-   - Create a new project at [supabase.com](https://supabase.com)
-   - Get your project URL and anon key
-   - Update `src/services/supabase.js` with your credentials:
-   ```javascript
-   const supabaseUrl = 'YOUR_SUPABASE_URL';
-   const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
-   ```
-
-4. **Run the app**
-   ```bash
-   npm start
-   # or
-   npx expo start
-   ```
-
-## 📱 Project Structure
-
-```
-BeeGrubApp/
-├── src/
-│   ├── components/
-│   │   └── common/          # Reusable UI components
-│   ├── constants/
-│   │   ├── colors.js        # Color definitions
-│   │   └── theme.js         # Theme constants
-│   ├── navigation/
-│   │   └── AppNavigator.js  # Navigation setup
-│   ├── screens/
-│   │   ├── auth/           # Authentication screens
-│   │   ├── student/        # Student app screens
-│   │   └── vendor/         # Vendor app screens (to be added)
-│   ├── services/
-│   │   ├── api.js          # API service functions
-│   │   └── supabase.js     # Supabase configuration
-│   └── utils/
-│       └── helpers.js      # Utility functions
-├── assets/                 # Images, fonts, etc.
-├── App.js                 # Main app component
-└── package.json
-```
-
-## 🎨 Key Features
-
-### Authentication
-- Student registration with BINUS email validation
-- Vendor registration with admin approval
-- Secure login/logout
-
-### Student Features
-- Browse available canteens
-- View menu items
-- Add items to cart
-- Select pickup location and time
-- Place orders
-- View order history
-
-### Vendor Features (Coming Soon)
-- Manage menu items
-- View incoming orders
-- Update order status
-- Dashboard analytics
-
-## 🛠 Tech Stack
-
-- **Frontend**: React Native + Expo
-- **Backend**: Supabase (PostgreSQL database)
-- **Authentication**: Supabase Auth
-- **Navigation**: React Navigation
-- **State Management**: React Hooks
-
-## 🎯 Core Screens
-
-1. **Startup Screen** - App intro with auto-navigation
-2. **Login Choice** - Select user type (Student/Vendor)
-3. **Login Screen** - Email/password authentication
-4. **Register Choice** - Registration type selection
-5. **Register Screen** - User registration form
-6. **Student Home** - Browse available canteens
-7. **Menu Screen** - View menu items and add to cart
-8. **Checkout Screen** - Order summary and placement
-9. **Orders Screen** - View order history
-
-## 🗄 Database Schema (Supabase)
-
-### Tables to create in Supabase:
-
-```sql
--- Students table
-CREATE TABLE students (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  student_id TEXT UNIQUE,
-  full_name TEXT,
-  email TEXT,
-  phone TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Vendors table
-CREATE TABLE vendors (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  canteen_name TEXT,
-  canteen_location TEXT,
-  owner_name TEXT,
-  email TEXT,
-  phone TEXT,
-  status TEXT DEFAULT 'pending', -- pending, approved, rejected
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Menu Items table
-CREATE TABLE menu_items (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  vendor_id UUID REFERENCES vendors(id),
-  name TEXT,
-  description TEXT,
-  price DECIMAL,
-  available BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Orders table
-CREATE TABLE orders (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  student_id UUID REFERENCES auth.users(id),
-  vendor_id UUID REFERENCES vendors(id),
-  pickup_location TEXT,
-  pickup_time TEXT,
-  notes TEXT,
-  total_amount DECIMAL,
-  status TEXT DEFAULT 'pending', -- pending, confirmed, preparing, ready, completed, cancelled
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Order Items table
-CREATE TABLE order_items (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  order_id UUID REFERENCES orders(id),
-  menu_item_id UUID REFERENCES menu_items(id),
-  quantity INTEGER,
-  price DECIMAL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## 🎨 Design System
-
-### Colors
-- Primary: `#f1ead1` (Cream background)
-- Text: `#000000` (Black)
-- Text Secondary: `#363434` (Dark gray)
-- Success: `#4CAF50` (Green)
-- Error: `#F44336` (Red)
-- Info: `#2196F3` (Blue)
-
-### Typography
-- Extra Large: 64px (App title)
-- Large: 32px (Screen titles)
-- Medium: 18px (Body text)
-- Regular: 16px (Regular text)
-- Small: 14px (Labels)
-
-## 📝 Development Notes
-
-### Converting from Figma/CSS to React Native
-
-When converting your Figma designs:
-
-1. **Replace HTML elements**:
-   - `div` → `View`
-   - `p`, `span` → `Text`
-   - `input` → `TextInput`
-   - `button` → `TouchableOpacity`
-
-2. **Convert CSS to StyleSheet**:
-   ```css
-   /* CSS */
-   .container {
-     background-color: #f1ead1;
-     padding: 20px;
-   }
-   ```
-   ```javascript
-   // React Native
-   const styles = StyleSheet.create({
-     container: {
-       backgroundColor: '#f1ead1',
-       padding: 20,
-     }
-   });
-   ```
-
-3. **Layout differences**:
-   - All layouts use Flexbox by default
-   - No `margin: auto` - use `alignItems: 'center'`
-   - No `position: absolute` without parent having `position: relative`
-
-## 🚧 Next Steps
-
-1. **Set up Supabase database** with the provided schema
-2. **Add sample data** for testing
-3. **Implement vendor screens**
-4. **Add push notifications**
-5. **Implement payment integration**
-6. **Add image upload for menu items**
-7. **Create admin panel**
-
-## 🐛 Common Issues
-
-1. **Metro bundler issues**: Clear cache with `npx expo start -c`
-2. **Navigation errors**: Make sure all screen names match
-3. **Supabase connection**: Verify your URL and keys are correct
-4. **Authentication issues**: Check if email confirmation is required
-
-## 📞 Support
-
-For questions or issues, refer to:
-- [React Native Documentation](https://reactnative.dev/)
-- [Expo Documentation](https://docs.expo.dev/)
-- [Supabase Documentation](https://supabase.com/docs)
-- [React Navigation Documentation](https://reactnavigation.org/)
+This README is only for the **Expo / React Native app** inside the `BeeGrubApp` folder.
 
 ---
 
-**Happy coding! 🐝🍯**
+## 1. Features (Current State)
+
+### Roles
+- **Student** – browse canteens, add items to cart, place orders, track order status, view history.
+- **Vendor** – manage menu, receive orders from students, update order status.
+- **Admin** – approve/reject vendors, manage users, view high‑level statistics.
+
+### Core Flows
+- Email/password authentication with Supabase Auth.
+- Email confirmation after registration.
+- Password reset via email link (deep‑link into the app).
+- Student ordering flow: select vendor → browse menu → cart → checkout → order history.
+- Vendor and admin dashboards with basic management tools.
+
+For detailed functional requirements, see `SRS_UPDATED.md` and `STUDENT_SCREENS_GUIDE.md`.
+
+---
+
+## 2. Tech Stack
+
+- **Runtime**: React Native + Expo
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **Navigation**: React Navigation
+- **State Management**: React Hooks + Context (e.g., `CartContext`)
+- **Payments**: Midtrans (via separate Node API in `../beegrub-payments-api`)
+
+---
+
+## 3. Project Structure
+
+```bash
+BeeGrubApp/
+├── App.js                 # Root component, deep‑link handling
+├── app.json               # Expo config (scheme, extra values)
+├── assets/                # Images, fonts, icons
+├── src/
+│   ├── components/
+│   │   ├── common/        # Reusable UI components (Button, Card, Input,...)
+│   │   └── specific/      # Feature‑specific components (e.g., VendorCard)
+│   ├── constants/
+│   │   ├── colors.js      # Color palette
+│   │   └── theme.js       # Typography, spacing, radius
+│   ├── context/
+│   │   └── CartContext.js # Student cart state
+│   ├── navigation/
+│   │   ├── AppNavigator.js    # Role‑based root navigator
+│   │   ├── AuthNavigator.js   # Login / register / reset password
+│   │   ├── StudentNavigator.js
+│   │   ├── VendorNavigator.js
+│   │   └── AdminNavigator.js
+│   ├── screens/
+│   │   ├── auth/          # Login, Register, Confirm Email, Forgot/Reset Password
+│   │   ├── student/       # Student home, menu, cart, orders, etc.
+│   │   ├── vendor/        # Vendor dashboard and order management
+│   │   └── admin/         # Admin dashboard, user & vendor management
+│   ├── services/
+│   │   ├── api.js         # High‑level data access (users, vendors, orders, stats)
+│   │   └── supabase.js    # Supabase client + auth/user helpers
+│   └── utils/
+│       └── helpers.js     # Generic helpers
+└── package.json
+```
+
+Database schema, RLS policies, and triggers are described in:
+
+- `database_schema.sql`
+- `BeeGrub_ERD_Visualization.md`
+- `EMAIL_CONFIRMATION_SETUP.md`
+- `PAYMENT_INTEGRATION_GUIDE.md`
+
+---
+
+## 4. Prerequisites
+
+- Node.js **16+**
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`) – optional but convenient
+- Android device/emulator or iOS device/simulator
+- A Supabase project (URL + anon key)
+
+---
+
+## 5. Setup & Running Locally
+
+1. **Install dependencies**
+
+  From the `BeeGrubApp` folder:
+
+  ```bash
+  npm install
+  # or
+  yarn
+  ```
+
+2. **Configure Supabase**
+
+  In `src/services/supabase.js`, set your project credentials:
+
+  ```js
+  const supabaseUrl = 'https://YOUR-PROJECT.supabase.co';
+  const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  ```
+
+  Make sure the **Site URL** and **Redirect URLs** in the Supabase dashboard match the app’s deep‑link scheme (see section 6).
+
+3. **Run the app in development**
+
+  ```bash
+  npm start
+  # or
+  npx expo start
+  ```
+
+  Then:
+  - Scan the QR code with the Expo Go app, **or**
+  - Press `a` to open Android emulator, `i` for iOS simulator.
+
+> Note: Deep links from email (reset password, confirm email) are fully reliable on a **built app**. In Expo Go they may be limited.
+
+---
+
+## 6. Auth & Deep Linking (Supabase)
+
+The app uses a custom scheme (configured in `app.json`) to handle email links:
+
+- Example scheme: `beegrub://`
+- Example redirect URIs:
+  - `beegrub://reset-password`
+  - `beegrub://confirm-email`
+
+In Supabase **Authentication → URL Configuration**:
+
+- **Site URL**: `beegrub://auth-callback` (or similar placeholder using the same scheme)
+- **Redirect URLs**: include at least the two URIs above.
+
+The app:
+
+- Listens for password‑recovery links.
+- Extracts the Supabase access/refresh tokens from the URL.
+- Calls `supabase.auth.setSession(...)`.
+- Navigates to the **Reset Password** screen so the user can set a new password.
+
+---
+
+## 7. Environment & Configuration Summary
+
+Minimum configuration to run BeeGrub:
+
+- Supabase project with tables and policies from `database_schema.sql`.
+- `supabaseUrl` and `supabaseAnonKey` set in `src/services/supabase.js`.
+- Deep‑link URLs registered in Supabase as described above.
+- (Optional) Midtrans credentials configured in the separate payments API (`../beegrub-payments-api`).
+
+---
+
+## 8. Building a Release APK (Android)
+
+BeeGrub uses **EAS Build** (Expo Application Services) for production builds.
+
+### One‑time setup
+
+1. **Install EAS CLI**
+
+  ```bash
+  npm install -g eas-cli
+  ```
+
+2. **Log in to Expo**
+
+  ```bash
+  eas login
+  ```
+
+3. **Configure EAS for this app** (run once in `BeeGrubApp`):
+
+  ```bash
+  eas build:configure
+  ```
+
+  This creates `eas.json` with default build profiles.
+
+### Build an Android APK for testers / submission
+
+From the `BeeGrubApp` folder:
+
+```bash
+eas build --platform android --profile preview
+```
+
+- `preview` profile typically produces an **APK** that you can install directly on devices for your project submission.
+- EAS will guide you through creating or reusing a keystore the first time.
+
+Once the build finishes, open the build page URL printed in the terminal and download the APK.
+
+If you later want a Play Store–ready bundle, you can run:
+
+```bash
+eas build --platform android --profile production
+```
+
+---
+
+## 9. Suggested "Release" Checklist
+
+Before you hand in or publish the app:
+
+1. **Freeze features** – avoid adding new features during release.
+2. **Smoke‑test core flows** for all roles:
+  - Student: register → confirm email → login → order → see history.
+  - Vendor: login → view orders → update status.
+  - Admin: approve/reject vendor → manage users.
+3. **Verify auth links** – test email confirmation and password reset on a **built APK**.
+4. **Build a fresh APK** using the EAS commands above.
+5. **Label the version** (e.g., `1.0.0`) in `app.json` and/or `eas.json`.
+6. **Attach short notes** for evaluators: known limitations, test account credentials, and which features are implemented.
+
+---
+
+## 10. After Release – Handling Bugs
+
+Recommended workflow when someone reports a bug:
+
+1. **Record the issue** – what they did, what they expected, what happened.
+2. **Reproduce locally** – run the app with the same role and steps.
+3. **Fix in code** on a new git branch (e.g., `fix/reset-password-bug`).
+4. **Re‑test affected flows** (especially auth and ordering).
+5. **Bump the version** (e.g., `1.0.1`) and build a new APK with EAS.
+6. **Distribute the new build** and update your documentation / changelog.
+
+---
+
+## 11. Useful References
+
+- React Native: https://reactnative.dev/
+- Expo: https://docs.expo.dev/
+- Supabase: https://supabase.com/docs
+- React Navigation: https://reactnavigation.org/
+
