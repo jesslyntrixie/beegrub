@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -44,7 +44,7 @@ const withTimeout = async (factory, timeoutMs = ROLE_FETCH_TIMEOUT_MS, timeoutMe
  * and the role fetched from the `users` table. Acts as the entry point for every experience variant
  * (auth, student, vendor, admin).
  */
-export const AppNavigator = () => {
+export const AppNavigator = forwardRef((props, ref) => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +168,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={ref}>
       {!user ? (
         <AuthNavigator />
       ) : userRole === 'student' ? (
@@ -182,4 +182,4 @@ export const AppNavigator = () => {
       )}
     </NavigationContainer>
   );
-};
+});

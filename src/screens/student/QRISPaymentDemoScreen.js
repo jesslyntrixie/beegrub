@@ -1,260 +1,181 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
-  Animated,
+  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'react-native-qrcode-svg';
+import { WebView } from 'react-native-webview';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { CartContext } from '../../context/CartContext';
 import { apiService } from '../../services/api';
-import { supabase } from '../../services/supabase';
 
 /**
- * DEMO MODE QRIS Payment Screen
- * This simulates a real QRIS payment flow for demonstration purposes
- * In production, this would integrate with actual Midtrans API
+ * QRIS Payment Screen (Midtrans + Demo Complete Button)
+ * Uses beegrub-payments-api to create a Midtrans QRIS payment session
+ * and shows the Snap payment page in a WebView.
+ * The demo button calls /demo/payments/complete to mark as paid.
  */
 export const QRISPaymentDemoScreen = ({ route, navigation }) => {
-  const { orderData } = route.params || {};
-  const { clearCart } = useContext(CartContext);
-  const [paymentStatus, setPaymentStatus] = useState('scanning'); // scanning, processing, success
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const { orderId, orderNumber, total } = route.params || {};
+  const [snapUrl, setSnapUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   useEffect(() => {
-    // Fade in animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    const init = async () => {
+      try {
+        if (!orderId || !total) {
+          Alert.alert('Error', 'Missing order information for payment');
+          navigation.goBack();
+          return;
+        }
 
-    // Simulate payment processing after 3 seconds
-    const timer = setTimeout(() => {
-      setPaymentStatus('processing');
-      
-      // Complete payment after another 2 seconds
-      setTimeout(async () => {
-        setPaymentStatus('success');
-        
-        // Animate success
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 3,
-          useNativeDriver: true,
-        }).start();
+        const { data, error } = await apiService.paymentsApi.createQrisPayment({
+          orderId: String(orderId),
+          amount: total,
+          customer: {
+            first_name: 'Student',
+            last_name: '',
+          },
+        });
 
-        // Create order in database
-        const order = await createOrder();
+        if (error || !data?.transaction?.redirect_url) {
+          console.error('QRIS init error:', error || data);
+          Alert.alert('Error', 'Failed to start QRIS payment.');
+          navigation.goBack();
+          return;
+        }
 
-        // Navigate to confirmation after showing success
-        setTimeout(() => {
-          if (order) {
-            navigation.replace('OrderConfirmation', {
-              orderId: order.id,
-              orderNumber: order.order_number,
-              paymentMethod: 'qris',
-              paymentStatus: 'completed',
-              total: order.total,
-              pickupTime: order.scheduled_pickup_time,
-            });
-          }
-        }, 1500);
-      }, 2000);
-    }, 3000);
+        setSnapUrl(data.transaction.redirect_url);
+      } catch (err) {
+        console.error('QRIS init exception:', err);
+        Alert.alert('Error', 'Failed to start QRIS payment.');
+        navigation.goBack();
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
-  }, []);
+    init();
+  }, [orderId, total, navigation]);
 
-  const createOrder = async () => {
+  const handleDemoComplete = async () => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert('Error', 'Please login to place order');
-        return null;
-      }
+      if (!orderId) return;
+      setIsCompleting(true);
 
-      // Get student record
-      const { data: appUser } = await apiService.users.getByAuthUserId(user.id);
-      if (!appUser || appUser.role !== 'student') {
-        Alert.alert('Error', 'Student profile not found');
-        return null;
-      }
-
-      // Create order data
-      const orderPayload = {
-        order_number: orderData.orderNumber || `BG-${Date.now()}`,
-        student_id: appUser.id,
-        vendor_id: orderData.vendorId,
-        pickup_location_id: orderData.pickupLocationId,
-        order_type: 'pre_order',
-        subtotal: orderData.subtotal,
-        service_fee: orderData.serviceFee,
-        total: orderData.total,
-        status: 'scheduled',
-        scheduled_pickup_time: orderData.pickupTime,
-        time_slot: orderData.timeSlot,
-        special_instructions: orderData.specialInstructions,
-        payment_method: 'qris',
-        payment_status: 'completed', // QRIS demo shows as paid
-        items: orderData.items,
-      };
-
-      // Create order in database
-      const { data: order, error } = await apiService.orders.create(orderPayload);
-
+      const { error } = await apiService.paymentsApi.completePaymentDemo(orderId);
       if (error) {
-        console.error('Order creation error:', error);
-        Alert.alert('Error', 'Failed to create order. Please try again.');
-        return null;
+        Alert.alert('Error', 'Failed to complete demo payment.');
+        return;
       }
 
-      // Clear cart on success
-      clearCart();
-
-      return order;
-    } catch (error) {
-      console.error('Order creation exception:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
-      return null;
+      navigation.replace('OrderConfirmation', {
+        orderId,
+        orderNumber,
+        paymentMethod: 'qris',
+        paymentStatus: 'completed',
+        total,
+      });
+    } catch (err) {
+      console.error('Demo complete exception:', err);
+      Alert.alert('Error', 'Failed to complete demo payment.');
+    } finally {
+      setIsCompleting(false);
     }
   };
 
-  const renderScanningState = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+  const renderContent = () => (
+    <View style={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Scan QR Code</Text>
+        <Text style={styles.title}>QRIS Payment</Text>
         <Text style={styles.subtitle}>
-          Use any e-wallet app to scan and pay
+          Scan and pay using your e-wallet
         </Text>
       </View>
 
-      {/* QR Code */}
-      <View style={styles.qrContainer}>
-        <View style={styles.qrCodeWrapper}>
-          <QRCode
-            value={`DEMO-QRIS-${orderData?.orderNumber || Date.now()}`}
-            size={220}
-            backgroundColor="white"
-            color="black"
+      <View style={styles.webviewContainer}>
+        {snapUrl ? (
+          <WebView
+            source={{ uri: snapUrl }}
+            startInLoadingState
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            mixedContentMode="always"
+            thirdPartyCookiesEnabled={true}
+            renderLoading={() => (
+              <View style={styles.webviewLoading}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.webviewLoadingText}>Loading payment page...</Text>
+              </View>
+            )}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.error('WebView error:', nativeEvent);
+              Alert.alert('WebView Error', 'Failed to load payment page');
+            }}
+            onLoad={() => console.log('WebView loaded successfully')}
+            onLoadStart={() => console.log('WebView loading started:', snapUrl)}
+            style={{ flex: 1 }}
           />
-        </View>
-        
-        {/* Supported Payments */}
-        <View style={styles.supportedPayments}>
-          <Text style={styles.supportedTitle}>Supported Payment Apps:</Text>
-          <View style={styles.paymentLogos}>
-            <View style={styles.paymentLogoPlaceholder}>
-              <Text style={styles.paymentLogoText}>GoPay</Text>
-            </View>
-            <View style={styles.paymentLogoPlaceholder}>
-              <Text style={styles.paymentLogoText}>OVO</Text>
-            </View>
-            <View style={styles.paymentLogoPlaceholder}>
-              <Text style={styles.paymentLogoText}>Dana</Text>
-            </View>
-            <View style={styles.paymentLogoPlaceholder}>
-              <Text style={styles.paymentLogoText}>ShopeePay</Text>
-            </View>
+        ) : (
+          <View style={styles.webviewLoading}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.webviewLoadingText}>Preparing payment...</Text>
           </View>
-        </View>
+        )}
       </View>
 
-      {/* Amount */}
       <View style={styles.amountContainer}>
         <Text style={styles.amountLabel}>Total Payment</Text>
         <Text style={styles.amountValue}>
-          Rp {orderData?.total?.toLocaleString() || '0'}
+          Rp {total?.toLocaleString() || '0'}
         </Text>
       </View>
 
-      {/* Instructions */}
-      <View style={styles.instructions}>
-        <View style={styles.instructionItem}>
-          <View style={styles.instructionNumber}>
-            <Text style={styles.instructionNumberText}>1</Text>
-          </View>
-          <Text style={styles.instructionText}>Open your e-wallet app</Text>
-        </View>
-        <View style={styles.instructionItem}>
-          <View style={styles.instructionNumber}>
-            <Text style={styles.instructionNumberText}>2</Text>
-          </View>
-          <Text style={styles.instructionText}>Scan the QR code above</Text>
-        </View>
-        <View style={styles.instructionItem}>
-          <View style={styles.instructionNumber}>
-            <Text style={styles.instructionNumberText}>3</Text>
-          </View>
-          <Text style={styles.instructionText}>Confirm payment in your app</Text>
-        </View>
-      </View>
-
-      {/* Demo Notice */}
       <View style={styles.demoNotice}>
         <Ionicons name="information-circle" size={18} color="#F59E0B" />
         <Text style={styles.demoNoticeText}>
-          DEMO MODE: Payment will auto-complete in a few seconds
-        </Text>
-      </View>
-
-      {/* Waiting indicator */}
-      <View style={styles.waitingContainer}>
-        <ActivityIndicator size="small" color={COLORS.primary} />
-        <Text style={styles.waitingText}>Waiting for payment...</Text>
-      </View>
-    </Animated.View>
-  );
-
-  const renderProcessingState = () => (
-    <View style={styles.content}>
-      <View style={styles.processingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.processingTitle}>Processing Payment</Text>
-        <Text style={styles.processingSubtitle}>
-          Please wait while we confirm your payment...
+          DEMO MODE: Use the button below to simulate successful payment
         </Text>
       </View>
     </View>
   );
 
-  const renderSuccessState = () => (
-    <Animated.View 
-      style={[
-        styles.content, 
-        { 
-          transform: [{ scale: scaleAnim }],
-          opacity: fadeAnim,
-        }
-      ]}
-    >
-      <View style={styles.successContainer}>
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={80} color="#10B981" />
-        </View>
-        <Text style={styles.successTitle}>Payment Successful!</Text>
-        <Text style={styles.successSubtitle}>
-          Your order has been confirmed
-        </Text>
-        <Text style={styles.successAmount}>
-          Rp {orderData?.total?.toLocaleString() || '0'}
-        </Text>
-      </View>
-    </Animated.View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      {paymentStatus === 'scanning' && renderScanningState()}
-      {paymentStatus === 'processing' && renderProcessingState()}
-      {paymentStatus === 'success' && renderSuccessState()}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Starting QRIS payment...</Text>
+        </View>
+      ) : (
+        <>
+          {renderContent()}
+          <View style={styles.bottomContainer}>
+            <TouchableOpacity
+              style={[
+                styles.demoButton,
+                isCompleting && styles.demoButtonDisabled,
+              ]}
+              onPress={handleDemoComplete}
+              disabled={isCompleting}
+            >
+              {isCompleting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.demoButtonText}>
+                  Simulate Payment Success (Demo)
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </SafeAreaView>
   );
 };
@@ -266,8 +187,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: SPACING.xl,
-    justifyContent: 'center',
+    padding: SPACING.lg,
   },
   header: {
     alignItems: 'center',
@@ -287,47 +207,24 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 
-  // QR Code
-  qrContainer: {
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  qrCodeWrapper: {
-    backgroundColor: COLORS.cardBackground,
-    padding: SPACING.xl,
+  webviewContainer: {
+    flex: 1,
     borderRadius: BORDER_RADIUS.medium,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: COLORS.cardBackground,
     marginBottom: SPACING.lg,
   },
-  supportedPayments: {
+  webviewLoading: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: SPACING.lg,
   },
-  supportedTitle: {
-    fontSize: FONTS.extraSmall,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  paymentLogos: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  paymentLogoPlaceholder: {
-    backgroundColor: COLORS.cardBackground,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.small,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  paymentLogoText: {
-    fontSize: 10,
-    fontWeight: '600',
+  webviewLoadingText: {
+    marginTop: SPACING.sm,
+    fontSize: FONTS.small,
     color: COLORS.textSecondary,
   },
 
@@ -352,35 +249,6 @@ const styles = StyleSheet.create({
     color: COLORS.buttonPrimary,
   },
 
-  // Instructions
-  instructions: {
-    marginBottom: SPACING.lg,
-  },
-  instructionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  instructionNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.buttonPrimary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.sm,
-  },
-  instructionNumberText: {
-    fontSize: FONTS.small,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  instructionText: {
-    fontSize: FONTS.small,
-    color: COLORS.text,
-    flex: 1,
-  },
-
   // Demo Notice
   demoNotice: {
     flexDirection: 'row',
@@ -400,62 +268,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-
-  // Waiting
-  waitingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    gap: SPACING.sm,
+    alignItems: 'center',
+    padding: SPACING.lg,
   },
-  waitingText: {
+  loadingText: {
+    marginTop: SPACING.sm,
     fontSize: FONTS.small,
     color: COLORS.textSecondary,
   },
-
-  // Processing State
-  processingContainer: {
+  bottomContainer: {
+    padding: SPACING.lg,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  demoButton: {
+    backgroundColor: COLORS.buttonPrimary,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  processingTitle: {
-    fontSize: FONTS.large,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xs,
-    letterSpacing: -0.3,
+  demoButtonDisabled: {
+    opacity: 0.6,
   },
-  processingSubtitle: {
-    fontSize: FONTS.small,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-
-  // Success State
-  successContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successIcon: {
-    marginBottom: SPACING.lg,
-  },
-  successTitle: {
-    fontSize: FONTS.large,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-    letterSpacing: -0.3,
-  },
-  successSubtitle: {
-    fontSize: FONTS.small,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.lg,
-  },
-  successAmount: {
-    fontSize: 32,
+  demoButtonText: {
+    fontSize: FONTS.regular,
     fontWeight: '700',
-    color: '#10B981',
+    color: COLORS.white,
   },
 });
 

@@ -19,10 +19,8 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 export default function AdminDashboardScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [pendingVendors, setPendingVendors] = useState([]);
-  const [approvedVendors, setApprovedVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     fetchData();
@@ -30,18 +28,15 @@ export default function AdminDashboardScreen({ navigation }) {
 
   const fetchData = async () => {
     try {
-      const [pendingResult, approvedResult, statsResult] = await Promise.all([
+      const [pendingResult, statsResult] = await Promise.all([
         apiService.admin.getVendors('pending'),
-        apiService.admin.getVendors('approved'),
         apiService.admin.getStats()
       ]);
 
       if (pendingResult.error) throw pendingResult.error;
-      if (approvedResult.error) throw approvedResult.error;
       if (statsResult.error) throw statsResult.error;
 
       setPendingVendors(pendingResult.data || []);
-      setApprovedVendors(approvedResult.data || []);
       setStats(statsResult.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -249,8 +244,6 @@ export default function AdminDashboardScreen({ navigation }) {
     );
   }
 
-  const displayData = activeTab === 'pending' ? pendingVendors : approvedVendors;
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -349,51 +342,26 @@ export default function AdminDashboardScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
-            onPress={() => setActiveTab('pending')}
-          >
-            <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-              Pending ({pendingVendors.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'approved' && styles.activeTab]}
-            onPress={() => setActiveTab('approved')}
-          >
-            <Text style={[styles.tabText, activeTab === 'approved' && styles.activeTabText]}>
-              Approved ({approvedVendors.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Vendor List */}
         <View style={styles.vendorList}>
-          {displayData.length === 0 ? (
+          {pendingVendors.length === 0 ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
                 <Ionicons 
-                  name={activeTab === 'pending' ? "checkmark-circle" : "storefront"} 
+                  name="checkmark-circle" 
                   size={64} 
                   color="#007AFF" 
                 />
               </View>
               <Text style={styles.emptyText}>
-                {activeTab === 'pending' 
-                  ? 'No Pending Vendors' 
-                  : 'No Approved Vendors'}
+                {'No Pending Vendors'}
               </Text>
               <Text style={styles.emptySubtext}>
-                {activeTab === 'pending' 
-                  ? 'All vendor applications have been reviewed' 
-                  : 'No vendors have been approved yet'}
+                {'All vendor applications have been reviewed'}
               </Text>
             </View>
           ) : (
-            displayData.map((item) => (
+            pendingVendors.map((item) => (
               <View key={item.id}>
                 {renderVendorCard({ item })}
               </View>

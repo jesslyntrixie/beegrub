@@ -7,6 +7,8 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupChooseRoleScreen } from '../screens/auth/SignupChooseRoleScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import ConfirmEmailScreen from '../screens/auth/ConfirmEmailScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +26,8 @@ export const AuthNavigator = () => {
       <Stack.Screen name="SignupChooseRole" component={SignupChooseRoleScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ConfirmEmail" component={ConfirmEmailScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 };

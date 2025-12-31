@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
 
+// Backend payments API (Midtrans) base URL – update if your Vercel URL changes
+const PAYMENTS_API_BASE_URL = 'https://beegrub-payments-api.vercel.app';
+
 export const apiService = {
   // Users related functions
   users: {
@@ -262,6 +265,111 @@ export const apiService = {
       return { data, error };
     },
 
+    // Update a user's status (e.g., active, suspended, inactive)
+    // Admin accounts are protected and cannot be modified here.
+    updateUserStatus: async (userId, status) => {
+      try {
+        const { data: user, error: fetchError } = await supabase
+          .from('users')
+          .select('id, role')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError) {
+          return { data: null, error: fetchError };
+        }
+
+        if (!user) {
+          return { data: null, error: new Error('User not found') };
+        }
+
+        if (user.role === 'admin') {
+          return { data: null, error: new Error('Admin accounts cannot be suspended or modified by this action.') };
+        }
+
+        // 1) Update status in users table
+        const { data: updatedUser, error: userError } = await supabase
+          .from('users')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', userId)
+          .select();
+
+        if (userError) {
+          return { data: null, error: userError };
+        }
+
+        // 2) If this is a vendor account, mirror the change into the vendors table
+        if (user.role === 'vendor') {
+          // Map user status to vendor status: active -> approved, suspended -> suspended
+          const vendorStatus = status === 'suspended' ? 'suspended' : 'approved';
+
+          const { error: vendorError } = await supabase
+            .from('vendors')
+            .update({ status: vendorStatus, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+
+          if (vendorError) {
+            return { data: null, error: vendorError };
+          }
+        }
+
+        return { data: updatedUser, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+
+    // Soft delete a user by setting status to 'inactive'.
+    // Admin accounts are protected and cannot be deleted.
+    deleteUser: async (userId) => {
+      try {
+        const { data: user, error: fetchError } = await supabase
+          .from('users')
+          .select('id, role')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError) {
+          return { data: null, error: fetchError };
+        }
+
+        if (!user) {
+          return { data: null, error: new Error('User not found') };
+        }
+
+        if (user.role === 'admin') {
+          return { data: null, error: new Error('Admin accounts cannot be deleted.') };
+        }
+
+        // 1) Mark user as inactive (soft delete)
+        const { data: updatedUser, error: userError } = await supabase
+          .from('users')
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
+          .eq('id', userId)
+          .select();
+
+        if (userError) {
+          return { data: null, error: userError };
+        }
+
+        // 2) If this is a vendor account, ensure vendor is not shown as approved
+        if (user.role === 'vendor') {
+          const { error: vendorError } = await supabase
+            .from('vendors')
+            .update({ status: 'suspended', updated_at: new Date().toISOString() })
+            .eq('id', userId);
+
+          if (vendorError) {
+            return { data: null, error: vendorError };
+          }
+        }
+
+        return { data: updatedUser, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+
     // Get all orders (for admin overview)
     getAllOrders: async () => {
       const { data, error } = await supabase
@@ -455,5 +563,56 @@ export const apiService = {
         .select();
       return { data, error };
     },
-  }
+  },
+
+  // Payments backend (Midtrans) integrations
+  paymentsApi: {
+    // Create a QRIS payment session via beegrub-payments-api
+    createQrisPayment: async ({ orderId, amount, customer }) => {
+      try {
+        const response = await fetch(`${PAYMENTS_API_BASE_URL}/payments/qris`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ orderId, amount, customer }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`QRIS payment failed: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        return { data, error: null };
+      } catch (error) {
+        console.error('createQrisPayment error:', error);
+        return { data: null, error };
+      }
+    },
+
+    // DEMO ONLY: force-complete a payment for a given orderId
+    completePaymentDemo: async (orderId) => {
+      try {
+        const response = await fetch(`${PAYMENTS_API_BASE_URL}/demo/payments/complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ orderId }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Demo complete failed: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        return { data, error: null };
+      } catch (error) {
+        console.error('completePaymentDemo error:', error);
+        return { data: null, error };
+      }
+    },
+  },
 };

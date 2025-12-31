@@ -85,20 +85,15 @@ export const PaymentMethodScreen = ({ route, navigation }) => {
       // For cash, create order then go to confirmation
       await createOrder('cash', 'pending');
     } else if (selectedMethod === 'qris') {
-      // For QRIS demo, show payment screen first (will create order after "payment")
-      navigation.navigate('QRISPaymentDemo', {
-        orderData: {
-          ...orderSummary,
-          orderNumber: orderSummary?.orderNumber || `BG-${Date.now()}`,
-        },
-      });
+      // For QRIS, first create order with pending payment, then go to QRIS screen
+      await createOrder('qris', 'pending', { navigateToQris: true });
     } else {
       // For other e-wallets (future)
       Alert.alert('Coming Soon', `${method.name} will be available soon!`);
     }
   };
 
-  const createOrder = async (paymentMethod, paymentStatus) => {
+  const createOrder = async (paymentMethod, paymentStatus, options = {}) => {
     try {
       setIsProcessing(true);
 
@@ -147,15 +142,24 @@ export const PaymentMethodScreen = ({ route, navigation }) => {
       // Clear cart on success
       clearCart();
 
-      // Navigate to confirmation
-      navigation.navigate('OrderConfirmation', {
-        orderId: order.id,
-        orderNumber: order.order_number,
-        paymentMethod: paymentMethod,
-        paymentStatus: paymentStatus,
-        total: order.total,
-        pickupTime: order.scheduled_pickup_time,
-      });
+      if (options.navigateToQris && paymentMethod === 'qris') {
+        // Go to QRIS payment screen, backend + Midtrans will handle payment
+        navigation.navigate('QRISPaymentDemo', {
+          orderId: order.id,
+          orderNumber: order.order_number,
+          total: order.total,
+        });
+      } else {
+        // Navigate to confirmation
+        navigation.navigate('OrderConfirmation', {
+          orderId: order.id,
+          orderNumber: order.order_number,
+          paymentMethod: paymentMethod,
+          paymentStatus: paymentStatus,
+          total: order.total,
+          pickupTime: order.scheduled_pickup_time,
+        });
+      }
 
     } catch (error) {
       console.error('Order creation exception:', error);

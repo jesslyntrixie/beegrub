@@ -189,7 +189,7 @@ export const LoginScreen = ({ navigation }) => {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Password reset functionality coming soon!');
+    navigation.navigate('ForgotPassword');
   };
 
   return (

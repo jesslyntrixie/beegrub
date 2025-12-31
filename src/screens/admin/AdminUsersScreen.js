@@ -58,17 +58,32 @@ export default function AdminUsersScreen({ navigation }) {
   };
 
   const handleDeleteUser = (user) => {
+    if (user.role === 'admin') {
+      Alert.alert('Not allowed', 'Admin accounts cannot be deleted.');
+      return;
+    }
+
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${user.email}? This action cannot be undone.`,
+      `Are you sure you want to deactivate ${user.email}? They will no longer be able to sign in.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Deactivate',
           style: 'destructive',
-          onPress: () => {
-            // Implement delete functionality
-            Alert.alert('Info', 'Delete functionality will be implemented with proper API');
+          onPress: async () => {
+            try {
+              const { error } = await apiService.admin.deleteUser(user.id);
+              if (error) {
+                throw error;
+              }
+
+              Alert.alert('Success', 'User has been deactivated.');
+              fetchUsers();
+            } catch (err) {
+              console.error('Error deactivating user:', err);
+              Alert.alert('Error', err.message || 'Failed to deactivate user.');
+            }
           }
         }
       ]
@@ -76,6 +91,11 @@ export default function AdminUsersScreen({ navigation }) {
   };
 
   const handleSuspendUser = (user) => {
+    if (user.role === 'admin') {
+      Alert.alert('Not allowed', 'Admin accounts cannot be suspended.');
+      return;
+    }
+
     const newStatus = user.status === 'active' ? 'suspended' : 'active';
     Alert.alert(
       `${newStatus === 'suspended' ? 'Suspend' : 'Activate'} User`,
@@ -85,9 +105,19 @@ export default function AdminUsersScreen({ navigation }) {
         {
           text: newStatus === 'suspended' ? 'Suspend' : 'Activate',
           style: newStatus === 'suspended' ? 'destructive' : 'default',
-          onPress: () => {
-            // Implement suspend/activate functionality
-            Alert.alert('Info', 'Suspend/Activate functionality will be implemented with proper API');
+          onPress: async () => {
+            try {
+              const { error } = await apiService.admin.updateUserStatus(user.id, newStatus);
+              if (error) {
+                throw error;
+              }
+
+              Alert.alert('Success', `User has been ${newStatus === 'suspended' ? 'suspended' : 'activated'}.`);
+              fetchUsers();
+            } catch (err) {
+              console.error('Error updating user status:', err);
+              Alert.alert('Error', err.message || 'Failed to update user status.');
+            }
           }
         }
       ]
@@ -214,37 +244,45 @@ export default function AdminUsersScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.suspendButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  handleSuspendUser(selectedUser);
-                }}
-              >
-                <Ionicons 
-                  name={selectedUser.status === 'active' ? 'ban' : 'checkmark-circle'} 
-                  size={20} 
-                  color={selectedUser.status === 'active' ? '#F59E0B' : COLORS.success} 
-                />
-                <Text style={[styles.modalButtonText, { color: selectedUser.status === 'active' ? '#F59E0B' : COLORS.success }]}>
-                  {selectedUser.status === 'active' ? 'Suspend' : 'Activate'}
+            {selectedUser.role === 'admin' ? (
+              <View style={styles.modalActionsDisabled}>
+                <Text style={styles.modalInfoText}>
+                  Admin accounts cannot be suspended or deleted from this screen.
                 </Text>
-              </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.suspendButton]}
+                  onPress={() => {
+                    setModalVisible(false);
+                    handleSuspendUser(selectedUser);
+                  }}
+                >
+                  <Ionicons 
+                    name={selectedUser.status === 'active' ? 'ban' : 'checkmark-circle'} 
+                    size={20} 
+                    color={selectedUser.status === 'active' ? '#F59E0B' : COLORS.success} 
+                  />
+                  <Text style={[styles.modalButtonText, { color: selectedUser.status === 'active' ? '#F59E0B' : COLORS.success }]}>
+                    {selectedUser.status === 'active' ? 'Suspend' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.deleteButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  handleDeleteUser(selectedUser);
-                }}
-              >
-                <Ionicons name="trash" size={20} color={COLORS.error} />
-                <Text style={[styles.modalButtonText, { color: COLORS.error }]}>
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={() => {
+                    setModalVisible(false);
+                    handleDeleteUser(selectedUser);
+                  }}
+                >
+                  <Ionicons name="trash" size={20} color={COLORS.error} />
+                  <Text style={[styles.modalButtonText, { color: COLORS.error }]}>
+                    Delete
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>

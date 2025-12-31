@@ -15,17 +15,34 @@ export const authService = {
       email,
       password,
       options: {
-        data: userData
+        data: userData,
+        emailRedirectTo: 'beegrub://confirm-email',
       }
     });
     return { data, error };
-  },
+},
 
   // Sign in user
   signIn: async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    });
+    return { data, error };
+  },
+
+  // Send password reset email
+  resetPassword: async (email) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'beegrub://reset-password',
+    });
+    return { data, error };
+  },
+
+  // Update password for the currently authenticated (recovered) user
+  updatePassword: async (newPassword) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
     });
     return { data, error };
   },

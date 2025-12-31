@@ -121,7 +121,7 @@ export const StudentHomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.greeting}>Hi, {user?.user_metadata?.full_name?.split(' ')[0] || 'Student'}!</Text>
+          <Text style={styles.greeting}>Hi, {user?.user_metadata?.fullName?.split(' ')[0] || 'Student'}!</Text>
           <Text style={styles.subtitle}>What would you like to order today?</Text>
         </View>
         <View style={styles.headerButtons}>
