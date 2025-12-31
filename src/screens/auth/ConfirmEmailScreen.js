@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function ConfirmEmailScreen({ navigation, route }) {
   const { email } = route.params || {};
@@ -10,8 +10,12 @@ export default function ConfirmEmailScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
         {/* Icon/Illustration */}
         <View style={styles.iconContainer}>
           <Text style={styles.icon}>📧</Text>
@@ -19,9 +23,7 @@ export default function ConfirmEmailScreen({ navigation, route }) {
 
         {/* Title */}
         <Text style={styles.title}>Check Your Email</Text>
-
-        {/* Message */}
-        <Text style={styles.message}>
+        <Text style={styles.subtitle}>
           We've sent a confirmation email to
         </Text>
         <Text style={styles.email}>{email}</Text>
@@ -54,95 +56,98 @@ export default function ConfirmEmailScreen({ navigation, route }) {
           <Text style={styles.loginButtonText}>Go to Login</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   content: {
-    width: '100%',
-    maxWidth: 400,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.xxl,
     alignItems: 'center',
   },
   iconContainer: {
-    marginBottom: 20,
+    marginBottom: SPACING.lg,
   },
   icon: {
     fontSize: 80,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: FONTS.large,
+    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
-  message: {
-    fontSize: 16,
+  subtitle: {
+    fontSize: FONTS.regular,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
   },
   email: {
-    fontSize: 16,
+    fontSize: FONTS.regular,
     fontWeight: '600',
     color: COLORS.primary,
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
     textAlign: 'center',
   },
   instructionsContainer: {
-    backgroundColor: COLORS.lightGray,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
+    backgroundColor: COLORS.white,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.large,
+    marginBottom: SPACING.lg,
     width: '100%',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   instructions: {
-    fontSize: 14,
+    fontSize: FONTS.small,
     color: COLORS.text,
-    lineHeight: 22,
-    marginBottom: 8,
+    lineHeight: 20,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   noteContainer: {
     backgroundColor: '#FFF9E6',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.large,
+    marginBottom: SPACING.xl,
     width: '100%',
     borderWidth: 1,
-    borderColor: '#FFE066',
+    borderColor: '#FFD700',
   },
   noteTitle: {
-    fontSize: 14,
+    fontSize: FONTS.small,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   note: {
-    fontSize: 13,
+    fontSize: FONTS.small,
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
   loginButton: {
-    backgroundColor: '#000000',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
+    backgroundColor: COLORS.black,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.medium,
     width: '100%',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.5)',
+    height: 50,
+    justifyContent: 'center',
   },
   loginButtonText: {
-    color: '#ffffff',
+    color: COLORS.white,
+    fontSize: FONTS.regularfff',
     fontSize: 16,
     fontWeight: '700',
   },
