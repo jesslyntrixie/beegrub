@@ -147,7 +147,6 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: COLORS.white,
-    fontSize: FONTS.regularfff',
     fontSize: 16,
     fontWeight: '700',
   },

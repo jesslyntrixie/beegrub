@@ -20,14 +20,18 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.jesslyntrixie.BeeGrubApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "scheme": "beegrub",
     "extra": {
-      "supabaseRedirectUri": "beegrub://reset-password"
+      "supabaseRedirectUri": "beegrub://reset-password",
+      "eas": {
+        "projectId": "c755f9b5-4d16-4704-ab50-7dc8b5331fb0"
+      }
     }
   }
 }
