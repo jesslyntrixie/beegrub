@@ -1,14 +1,38 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
+import * as Linking from 'expo-linking';
 
 const { width, height } = Dimensions.get('window');
 
 export const StartupScreen = ({ navigation }) => {
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Login');
-    }, 2000);
-    return () => clearTimeout(timer);
+    let timer;
+
+    const init = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+
+        // If the app was opened via a password reset deep link,
+        // we skip the auto-redirect to Login so that the
+        // ResetPassword screen (navigated from App.js) stays visible.
+        if (initialUrl && initialUrl.includes('reset-password')) {
+          return;
+        }
+      } catch (e) {
+      }
+
+      timer = setTimeout(() => {
+        navigation.replace('Login');
+      }, 2000);
+    };
+
+    init();
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [navigation]);
 
   return (
@@ -17,7 +41,7 @@ export const StartupScreen = ({ navigation }) => {
       <View style={styles.logoAndBannerContainer}>
         {/* Logo Image */}
         <Image 
-          source={require('../../../assets/icon.png')} 
+          source={require('../../../assets/clipped-icon-min.png')} 
           style={styles.logoImage}
           resizeMode="contain"
         />

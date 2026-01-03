@@ -53,14 +53,12 @@ export const VendorEarningsScreen = ({ navigation }) => {
       );
 
       if (userError || !appUser) {
-        console.error('Error fetching vendor user:', userError);
         Alert.alert('Error', 'Failed to find vendor profile for this account.');
         return;
       }
 
       const { data, error } = await apiService.orders.getByVendor(appUser.id);
       if (error) {
-        console.error('Error loading vendor orders for earnings:', error);
         Alert.alert('Error', 'Failed to load earnings data');
         return;
       }
@@ -81,14 +79,16 @@ export const VendorEarningsScreen = ({ navigation }) => {
 
       setOrders(filtered);
     } catch (err) {
-      console.error('Error loading vendor earnings:', err);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const totalRevenue = (orders || []).reduce((sum, o) => sum + (o.total || 0), 0);
+  // From the vendor's perspective, earnings should be based on
+  // menu sales only, not including platform/courier fees. The
+  // `subtotal` column stores the sum of menu item prices.
+  const totalRevenue = (orders || []).reduce((sum, o) => sum + (o.subtotal || 0), 0);
   const totalOrders = (orders || []).length;
   const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -135,7 +135,7 @@ export const VendorEarningsScreen = ({ navigation }) => {
           <Text style={styles.orderRowTime}>{timeStr}</Text>
         </View>
         <View style={styles.orderRowRight}>
-          <Text style={styles.orderRowTotal}>Rp {(item.total || 0).toLocaleString()}</Text>
+          <Text style={styles.orderRowTotal}>Rp {(item.subtotal || 0).toLocaleString()}</Text>
           <Text style={styles.orderRowItems}>{item.order_items?.length || 0} items</Text>
         </View>
       </View>

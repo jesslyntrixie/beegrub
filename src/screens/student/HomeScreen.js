@@ -30,7 +30,6 @@ export const StudentHomeScreen = ({ navigation }) => {
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
     } catch (error) {
-      console.error('Error loading user:', error);
     }
   };
 
@@ -43,7 +42,6 @@ export const StudentHomeScreen = ({ navigation }) => {
       }
       setVendors(data || []);
     } catch (error) {
-      console.error('Error loading vendors:', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -67,20 +65,15 @@ export const StudentHomeScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('🔴 Starting logout...');
               const { error } = await authService.signOut();
               
               if (error) {
-                console.error('❌ Logout error:', error);
                 Alert.alert('Error', 'Failed to logout: ' + error.message);
                 return;
               }
-              
-              console.log('✅ Logout successful! AppNavigator will handle navigation automatically.');
               // No need to manually navigate - AppNavigator's auth state listener
               // will detect the sign out and automatically switch to AuthNavigator
             } catch (err) {
-              console.error('🔴 Logout catch error:', err);
               Alert.alert('Error', 'An error occurred during logout');
             }
           }

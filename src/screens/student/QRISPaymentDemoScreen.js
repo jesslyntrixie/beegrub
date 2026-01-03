@@ -44,7 +44,6 @@ export const QRISPaymentDemoScreen = ({ route, navigation }) => {
         });
 
         if (error || !data?.transaction?.redirect_url) {
-          console.error('QRIS init error:', error || data);
           Alert.alert('Error', 'Failed to start QRIS payment.');
           navigation.goBack();
           return;
@@ -52,7 +51,6 @@ export const QRISPaymentDemoScreen = ({ route, navigation }) => {
 
         setSnapUrl(data.transaction.redirect_url);
       } catch (err) {
-        console.error('QRIS init exception:', err);
         Alert.alert('Error', 'Failed to start QRIS payment.');
         navigation.goBack();
       } finally {
@@ -82,7 +80,6 @@ export const QRISPaymentDemoScreen = ({ route, navigation }) => {
         total,
       });
     } catch (err) {
-      console.error('Demo complete exception:', err);
       Alert.alert('Error', 'Failed to complete demo payment.');
     } finally {
       setIsCompleting(false);
@@ -115,11 +112,8 @@ export const QRISPaymentDemoScreen = ({ route, navigation }) => {
             )}
             onError={(syntheticEvent) => {
               const { nativeEvent } = syntheticEvent;
-              console.error('WebView error:', nativeEvent);
               Alert.alert('WebView Error', 'Failed to load payment page');
             }}
-            onLoad={() => console.log('WebView loaded successfully')}
-            onLoadStart={() => console.log('WebView loading started:', snapUrl)}
             style={{ flex: 1 }}
           />
         ) : (

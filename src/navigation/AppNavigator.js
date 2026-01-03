@@ -9,7 +9,7 @@ import { VendorNavigator } from './VendorNavigator';
 import { AdminNavigator } from './AdminNavigator';
 
 // Supabase Auth Service
-import { authService, userService } from '../services/supabase';
+import { authService, userService, passwordRecoveryState } from '../services/supabase';
 
 // Colors
 import { COLORS } from '../constants/colors';
@@ -52,18 +52,27 @@ export const AppNavigator = forwardRef((props, ref) => {
   const [roleFetchTicket, setRoleFetchTicket] = useState(0);
 
   useEffect(() => {
-    console.log('📡 Setting up auth state listener...');
-    
     // Subscribe to auth changes - this is the primary way to detect auth state
     try {
       const { data: { subscription } } = authService.onAuthStateChange(
         (_event, session) => {
-          console.log('📡 Auth state changed:', _event, session?.user?.email);
 
           const nextUser = session?.user ?? null;
 
+          // Global guard: if we are in the password recovery flow (triggered
+          // by a deep link), we deliberately keep the app in the Auth stack
+          // even though Supabase has a valid session. The user should only
+          // land in the logged-in area after they log in with their new
+          // password, not just by opening the reset link.
+          if (passwordRecoveryState.isInRecovery || _event === 'PASSWORD_RECOVERY') {
+            setUser(null);
+            setUserRole(null);
+            setRoleTargetUserId(null);
+            setLoading(false);
+            return;
+          }
+
           if (_event === 'SIGNED_OUT' || !nextUser) {
-            console.log('🚪 User signed out, clearing state...');
             setUser(null);
             setUserRole(null);
             setRoleTargetUserId(null);
@@ -92,11 +101,9 @@ export const AppNavigator = forwardRef((props, ref) => {
       );
 
       return () => {
-        console.log('🧹 Unsubscribing from auth changes');
         subscription?.unsubscribe();
       };
     } catch (err) {
-      console.error('🔴 Error setting up auth listener:', err);
       setLoading(false);
     }
   }, []);
@@ -109,7 +116,6 @@ export const AppNavigator = forwardRef((props, ref) => {
     let isActive = true;
 
     const fetchRole = async () => {
-      console.log('👤 Fetching user role for:', roleTargetUserId);
       setLoading(true);
 
       try {
@@ -120,30 +126,22 @@ export const AppNavigator = forwardRef((props, ref) => {
           return;
         }
 
-        console.log('📊 User role data:', { data, error });
-
         if (error) {
-          console.error('❌ Error fetching role:', error);
-          console.log('⚠️ Defaulting to student role');
           setUserRole('student');
           return;
         }
 
         if (data) {
           const role = data?.role;
-          console.log('🎯 Role:', role);
           setUserRole(role || 'student');
           return;
         }
 
-        console.warn('⚠️ No role data returned, defaulting to student');
         setUserRole('student');
       } catch (err) {
         if (!isActive) {
           return;
         }
-        console.error('🔴 Exception fetching role:', err);
-        console.log('⚠️ Defaulting to student role due to error');
         setUserRole('student');
       } finally {
         if (isActive) {

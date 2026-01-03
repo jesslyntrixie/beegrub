@@ -37,15 +37,6 @@ export default function AdminDashboardScreen({ navigation }) {
         apiService.admin.getStats()
       ]);
 
-      console.log('Pending vendors:', pendingResult.data);
-      console.log('Approved vendors:', approvedResult.data);
-      console.log('Stats:', statsResult.data);
-      console.log('Errors:', { 
-        pending: pendingResult.error, 
-        approved: approvedResult.error, 
-        stats: statsResult.error 
-      });
-
       if (pendingResult.error) throw pendingResult.error;
       if (approvedResult.error) throw approvedResult.error;
       if (statsResult.error) throw statsResult.error;
@@ -54,7 +45,6 @@ export default function AdminDashboardScreen({ navigation }) {
       setApprovedVendors(approvedResult.data || []);
       setStats(statsResult.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
       Alert.alert('Error', 'Failed to load data: ' + error.message);
     } finally {
       setLoading(false);
@@ -78,7 +68,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Success', `${businessName} has been approved!`);
               fetchData();
             } catch (error) {
-              console.error('Error approving vendor:', error);
               Alert.alert('Error', 'Failed to approve vendor');
             }
           }
@@ -104,7 +93,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Rejected', `${businessName} has been rejected`);
               fetchData();
             } catch (error) {
-              console.error('Error rejecting vendor:', error);
               Alert.alert('Error', 'Failed to reject vendor');
             }
           }
@@ -130,7 +118,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Suspended', `${businessName} has been suspended`);
               fetchData();
             } catch (error) {
-              console.error('Error suspending vendor:', error);
               Alert.alert('Error', 'Failed to suspend vendor');
             }
           }
@@ -152,7 +139,6 @@ export default function AdminDashboardScreen({ navigation }) {
             try {
               await authService.signOut();
             } catch (error) {
-              console.error('Error logging out:', error);
             }
           }
         }

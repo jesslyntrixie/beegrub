@@ -44,7 +44,6 @@ export const CheckoutScreen = ({ route, navigation }) => {
         ]);
 
         if (locError || slotError) {
-          console.error('Error loading pickup options:', locError || slotError);
           Alert.alert('Error', 'Failed to load pickup options');
           return;
         }
@@ -52,7 +51,6 @@ export const CheckoutScreen = ({ route, navigation }) => {
         setPickupLocations(locations || []);
         setTimeSlots(slots || []);
       } catch (error) {
-        console.error('Error loading pickup options:', error);
         Alert.alert('Error', 'Failed to load pickup options');
       }
     };
@@ -60,20 +58,45 @@ export const CheckoutScreen = ({ route, navigation }) => {
     loadReferenceData();
   }, []);
 
-  const calculateServiceFee = () => {
-    if (!selectedLocation) return 0;
+  // Calculates fee components (platform + delivery) based on the
+  // financial model in the pitch deck:
+  // - BeeGrub Revenue: Rp 3.000 (fixed platform fee per order)
+  // - Courier incentive (delivery): Rp 1.500 base + Rp 300 per floor
+  //   and roughly kept within the Rp 1.000 – Rp 5.000 band.
+  const calculateFees = () => {
+    if (!selectedLocation) {
+      return {
+        platformFee: 0,
+        deliveryFee: 0,
+        totalFee: 0,
+      };
+    }
 
     const floor = selectedLocation.floor || 1;
-    const cappedFloor = Math.min(Math.max(floor, 1), 9);
-    const baseFee = 2500;
-    const floorFee = (cappedFloor - 1) * 200;
+    const floorIndex = Math.max(0, floor - 1);
 
-    return baseFee + floorFee;
+    const PLATFORM_FEE = 3000; // BeeGrub fixed platform fee
+    const DELIVERY_BASE = 1500; // base courier incentive
+    const DELIVERY_PER_FLOOR = 300; // per-floor courier incentive
+
+    let deliveryFee = DELIVERY_BASE + DELIVERY_PER_FLOOR * floorIndex;
+
+    // Soft clamp to keep delivery fee within the 1k–5k range
+    deliveryFee = Math.min(Math.max(deliveryFee, 1000), 5000);
+
+    const platformFee = PLATFORM_FEE;
+    const totalFee = platformFee + deliveryFee;
+
+    return {
+      platformFee,
+      deliveryFee,
+      totalFee,
+    };
   };
 
   const getTotalPrice = () => {
-    const serviceFee = calculateServiceFee();
-    return totals.subtotal + serviceFee;
+    const { totalFee } = calculateFees();
+    return totals.subtotal + totalFee;
   };
 
   const getFilteredTimeSlots = () => {
@@ -169,8 +192,8 @@ export const CheckoutScreen = ({ route, navigation }) => {
     }
 
     // Navigate to payment selection screen
-    const serviceFee = calculateServiceFee();
-    const total = totals.subtotal + serviceFee;
+    const { platformFee, deliveryFee, totalFee } = calculateFees();
+    const total = totals.subtotal + totalFee;
 
     navigation.navigate('PaymentMethod', {
       orderSummary: {
@@ -184,7 +207,9 @@ export const CheckoutScreen = ({ route, navigation }) => {
         items: cartItems,
         cartItems,
         subtotal: totals.subtotal,
-        serviceFee: serviceFee,
+        serviceFee: totalFee,
+        platformFee,
+        deliveryFee,
         total,
 
         // Pickup info
@@ -243,9 +268,15 @@ export const CheckoutScreen = ({ route, navigation }) => {
               </Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Service Fee</Text>
+              <Text style={styles.totalLabel}>Service Fee (Platform)</Text>
               <Text style={styles.totalAmount}>
-                Rp {calculateServiceFee().toLocaleString()}
+                Rp {calculateFees().platformFee.toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Delivery Fee</Text>
+              <Text style={styles.totalAmount}>
+                Rp {calculateFees().deliveryFee.toLocaleString()}
               </Text>
             </View>
             <View style={styles.totalRow}>

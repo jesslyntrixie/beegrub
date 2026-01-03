@@ -75,20 +75,17 @@ export const OrdersScreen = ({ navigation }) => {
       const { data: appUser, error: userError } = await apiService.users.getByAuthUserId(authUser.id);
 
       if (userError || !appUser) {
-        console.error('Error fetching app user:', userError);
         Alert.alert('Error', 'Failed to find student profile for this account.');
         return;
       }
 
       const { data, error } = await apiService.orders.getByStudent(appUser.id);
       if (error) {
-        console.error('Error loading orders:', error);
         Alert.alert('Error', 'Failed to load orders');
         return;
       }
       setOrders(data || []);
     } catch (error) {
-      console.error('Error loading orders:', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -114,14 +111,12 @@ export const OrdersScreen = ({ navigation }) => {
             try {
               const { error } = await apiService.orders.updateStatus(order.id, 'cancelled');
               if (error) {
-                console.error('Error cancelling order:', error);
                 Alert.alert('Error', 'Failed to cancel order');
                 return;
               }
               Alert.alert('Success', 'Order cancelled successfully');
               loadOrders();
             } catch (err) {
-              console.error('Error cancelling order:', err);
               Alert.alert('Error', 'Failed to cancel order');
             }
           }

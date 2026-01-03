@@ -4,6 +4,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://etconfsqdceomsarqbpb.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0Y29uZnNxZGNlb21zYXJxYnBiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMDQwNzgsImV4cCI6MjA3NjY4MDA3OH0.ltoSk8oVjqF2JUwxjEwTmco5OZ0XdrEWzWjuffT2Qeo';
 
+// Simple in-memory flag to keep track of whether the app is currently
+// handling a password recovery deep-link. This lets AppNavigator know
+// not to treat the temporary Supabase session as a real "logged in" state.
+let isInPasswordRecoveryFlow = false;
+
+export const passwordRecoveryState = {
+  start() {
+    isInPasswordRecoveryFlow = true;
+  },
+  end() {
+    isInPasswordRecoveryFlow = false;
+  },
+  get isInRecovery() {
+    return isInPasswordRecoveryFlow;
+  },
+};
+
 // Create the real Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

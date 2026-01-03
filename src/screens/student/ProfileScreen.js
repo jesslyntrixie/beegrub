@@ -43,7 +43,6 @@ export const StudentProfileScreen = ({ navigation }) => {
       );
 
       if (userError || !appUser) {
-        console.error('Error fetching user:', userError);
         return;
       }
 
@@ -52,7 +51,6 @@ export const StudentProfileScreen = ({ navigation }) => {
       );
 
       if (studentError || !studentData) {
-        console.error('Error fetching student:', studentError);
         return;
       }
 
@@ -63,7 +61,6 @@ export const StudentProfileScreen = ({ navigation }) => {
         phone: studentData.phone || '',
       });
     } catch (err) {
-      console.error('Error loading profile:', err);
       Alert.alert('Error', 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -81,7 +78,6 @@ export const StudentProfileScreen = ({ navigation }) => {
       });
 
       if (error) {
-        console.error('Error updating profile:', error);
         Alert.alert('Error', 'Failed to update profile');
         return;
       }
@@ -90,7 +86,6 @@ export const StudentProfileScreen = ({ navigation }) => {
       setEditing(false);
       loadProfile();
     } catch (err) {
-      console.error('Error updating profile:', err);
       Alert.alert('Error', 'Failed to update profile');
     }
   };
@@ -114,12 +109,10 @@ export const StudentProfileScreen = ({ navigation }) => {
           try {
             const { error } = await authService.signOut();
             if (error) {
-              console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout');
               return;
             }
           } catch (err) {
-            console.error('Logout catch error:', err);
             Alert.alert('Error', 'An error occurred during logout');
           }
         },

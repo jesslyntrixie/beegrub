@@ -88,7 +88,6 @@ export const VendorDashboardScreen = ({ navigation }) => {
   const loadOrders = async () => {
     try {
       const authUser = await authService.getCurrentUser();
-      console.log('🔑 Auth user:', authUser?.id, authUser?.email);
       if (!authUser) {
         Alert.alert('Error', 'Please login again');
         return;
@@ -99,36 +98,27 @@ export const VendorDashboardScreen = ({ navigation }) => {
         authUser.id,
       );
 
-      console.log('👤 App user result:', { appUser, userError });
-
       if (userError || !appUser) {
-        console.error('❌ Error fetching vendor user:', userError);
-        console.error('❌ Auth user ID was:', authUser.id);
         Alert.alert('Error', 'Failed to find vendor profile for this account.');
         return;
       }
 
-      console.log('🏪 Fetching vendor data for user ID:', appUser.id);
       // Fetch vendor details to get business name
       const { data: vendorData, error: vendorError } = await apiService.vendors.getById(appUser.id);
-      console.log('🏪 Vendor data result:', { vendorData, vendorError });
       
       if (vendorData) {
         setVendorName(vendorData.business_name || 'Vendor');
       } else {
-        console.error('❌ No vendor data found for user ID:', appUser.id);
       }
 
       const { data, error } = await apiService.orders.getByVendor(appUser.id);
       if (error) {
-        console.error('Error loading vendor orders:', error);
         Alert.alert('Error', 'Failed to load orders');
         return;
       }
 
       setOrders(data || []);
     } catch (err) {
-      console.error('Error loading vendor orders:', err);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -154,13 +144,11 @@ export const VendorDashboardScreen = ({ navigation }) => {
             try {
               const { error } = await authService.signOut();
               if (error) {
-                console.error('Error logging out:', error);
                 Alert.alert('Error', 'Failed to logout');
                 return;
               }
               // Navigation will be handled by auth state listener
             } catch (err) {
-              console.error('Error logging out:', err);
               Alert.alert('Error', 'Failed to logout');
             }
           }
@@ -180,14 +168,12 @@ export const VendorDashboardScreen = ({ navigation }) => {
     try {
       const { error } = await apiService.orders.updateStatus(order.id, nextStatus);
       if (error) {
-        console.error('Error updating order status:', error);
         Alert.alert('Error', 'Failed to update order status');
         return;
       }
 
       loadOrders();
     } catch (err) {
-      console.error('Unexpected error updating status:', err);
       Alert.alert('Error', 'Unexpected error updating status');
     }
   };
@@ -204,9 +190,9 @@ export const VendorDashboardScreen = ({ navigation }) => {
           <Text style={styles.orderTime}>{formatDateTime(item.created_at)}</Text>
         </View>
 
-        <Text style={styles.studentName}>{item.students?.full_name || 'Student order'}</Text>
+        <Text style={styles.studentName}>{item.student?.full_name || 'Student order'}</Text>
         <Text style={styles.pickupInfo}>
-          🕐 {item.time_slot || 'Time slot'}  •  📍 {item.pickup_locations?.[0]?.name || item.pickup_location_name || 'Pickup location'}
+          🕐 {item.time_slot || item.scheduled_pickup_time || 'Time slot'}  •  📍 {item.pickup_location?.name || item.pickup_location_name || 'Pickup location'}
         </Text>
 
         <View style={styles.itemsContainer}>
@@ -222,7 +208,7 @@ export const VendorDashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.footerRow}>
-          <Text style={styles.totalAmount}>Total: Rp {(item.total || 0).toLocaleString()}</Text>
+          <Text style={styles.totalAmount}>Total: Rp {(item.subtotal || 0).toLocaleString()}</Text>
           {!isCompleted && (
             <TouchableOpacity
               style={styles.advanceButton}
@@ -252,7 +238,9 @@ export const VendorDashboardScreen = ({ navigation }) => {
     return isToday && isValidStatus;
   });
 
-  const todaysRevenue = todaysOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  // Vendor "earnings" should be based on menu subtotal only,
+  // excluding platform/courier fees stored in service_fee.
+  const todaysRevenue = todaysOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
   const todaysCount = todaysOrders.length;
 
   return (

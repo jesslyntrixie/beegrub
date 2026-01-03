@@ -60,7 +60,6 @@ export const MenuScreen = ({ route, navigation }) => {
       }
       setMenuItems(data || []);
     } catch (error) {
-      console.error('Error loading menu items:', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);

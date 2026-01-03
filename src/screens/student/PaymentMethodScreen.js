@@ -134,7 +134,6 @@ export const PaymentMethodScreen = ({ route, navigation }) => {
       const { data: order, error } = await apiService.orders.create(orderData);
 
       if (error) {
-        console.error('Order creation error:', error);
         Alert.alert('Error', 'Failed to create order. Please try again.');
         return;
       }
@@ -162,7 +161,6 @@ export const PaymentMethodScreen = ({ route, navigation }) => {
       }
 
     } catch (error) {
-      console.error('Order creation exception:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsProcessing(false);

@@ -397,11 +397,14 @@ export const apiService = {
           .from('vendors')
           .select('status');
         
-        // Count orders
+        // Count orders and aggregate revenue/fees
         const { data: orders } = await supabase
           .from('orders')
-          .select('id, total, status');
-        
+          .select('id, total, status, service_fee');
+
+        const totalRevenue = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+        const totalFees = orders?.reduce((sum, o) => sum + (o.service_fee || 0), 0) || 0;
+
         const stats = {
           users: {
             total: users?.length || 0,
@@ -418,7 +421,8 @@ export const apiService = {
           },
           orders: {
             total: orders?.length || 0,
-            revenue: orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0,
+            revenue: totalRevenue,
+            fees: totalFees,
             pending: orders?.filter(o => o.status === 'pending').length || 0,
             completed: orders?.filter(o => o.status === 'completed').length || 0,
           }
@@ -458,7 +462,6 @@ export const apiService = {
           .single();
 
         if (orderError) {
-          console.error('Order creation error:', orderError);
           return { data: null, error: orderError };
         }
 
@@ -477,7 +480,6 @@ export const apiService = {
           .select();
 
         if (itemsError) {
-          console.error('Order items creation error:', itemsError);
           // Rollback order if items fail
           await supabase.from('orders').delete().eq('id', order.id);
           return { data: null, error: itemsError };
@@ -497,13 +499,11 @@ export const apiService = {
           .single();
 
         if (paymentError) {
-          console.error('Payment creation error:', paymentError);
           // Don't rollback - payment can be added later
         }
 
         return { data: { ...order, items, payment }, error: null };
       } catch (error) {
-        console.error('Order creation exception:', error);
         return { data: null, error };
       }
     },
@@ -554,6 +554,25 @@ export const apiService = {
       return apiService.orders.getByVendorId(vendorId);
     },
 
+    // Get full order details by ID (for admin views)
+    getById: async (orderId) => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          vendor:vendors(business_name, location, contact_phone),
+          student:students(full_name, phone),
+          pickup_location:pickup_locations(name, building, description),
+          order_items(
+            *,
+            menu_item:menu_items(name, price)
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+      return { data, error };
+    },
+
     // Update order status
     updateStatus: async (orderId, status) => {
       const { data, error } = await supabase
@@ -586,7 +605,6 @@ export const apiService = {
         const data = await response.json();
         return { data, error: null };
       } catch (error) {
-        console.error('createQrisPayment error:', error);
         return { data: null, error };
       }
     },
@@ -610,7 +628,6 @@ export const apiService = {
         const data = await response.json();
         return { data, error: null };
       } catch (error) {
-        console.error('completePaymentDemo error:', error);
         return { data: null, error };
       }
     },

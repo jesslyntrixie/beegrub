@@ -25,6 +25,7 @@ export default function AdminUsersScreen({ navigation }) {
   const [filter, setFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showRoleFilterModal, setShowRoleFilterModal] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -39,7 +40,6 @@ export default function AdminUsersScreen({ navigation }) {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
       Alert.alert('Error', 'Failed to load users: ' + error.message);
     } finally {
       setLoading(false);
@@ -81,7 +81,6 @@ export default function AdminUsersScreen({ navigation }) {
               Alert.alert('Success', 'User has been deactivated.');
               fetchUsers();
             } catch (err) {
-              console.error('Error deactivating user:', err);
               Alert.alert('Error', err.message || 'Failed to deactivate user.');
             }
           }
@@ -115,7 +114,6 @@ export default function AdminUsersScreen({ navigation }) {
               Alert.alert('Success', `User has been ${newStatus === 'suspended' ? 'suspended' : 'activated'}.`);
               fetchUsers();
             } catch (err) {
-              console.error('Error updating user status:', err);
               Alert.alert('Error', err.message || 'Failed to update user status.');
             }
           }
@@ -317,33 +315,27 @@ export default function AdminUsersScreen({ navigation }) {
 
       {/* Filters */}
       <View style={styles.filtersContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: SPACING.sm, paddingHorizontal: SPACING.xl }}
+        <TouchableOpacity
+          style={styles.filterButton}
+          activeOpacity={0.8}
+          onPress={() => setShowRoleFilterModal(true)}
         >
-          {[
-            { key: 'all', label: 'All', icon: 'apps', color: '#007AFF' },
-            { key: 'student', label: 'Students', icon: 'school', color: '#10B981' },
-            { key: 'vendor', label: 'Vendors', icon: 'storefront', color: '#F59E0B' },
-            { key: 'admin', label: 'Admins', icon: 'shield-checkmark', color: '#EF4444' }
-          ].map((f) => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Ionicons 
-                name={f.icon} 
-                size={18} 
-                color={filter === f.key ? COLORS.white : f.color} 
-              />
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
+          <View style={styles.filterButtonInner}>
+            <Text style={styles.filterButtonLabel}>Role</Text>
+            <View style={styles.filterButtonValueRow}>
+              <Text style={styles.filterButtonValue}>
+                {filter === 'all'
+                  ? 'All'
+                  : filter === 'student'
+                  ? 'Students'
+                  : filter === 'vendor'
+                  ? 'Vendors'
+                  : 'Admins'}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* User List */}
@@ -371,6 +363,51 @@ export default function AdminUsersScreen({ navigation }) {
       />
 
       {renderUserDetailModal()}
+
+      {/* Role Filter Modal */}
+      <Modal
+        visible={showRoleFilterModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRoleFilterModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.roleModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRoleFilterModal(false)}
+        >
+          <View style={styles.roleModalContent}>
+            <Text style={styles.roleModalTitle}>Filter by role</Text>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'student', label: 'Students' },
+              { key: 'vendor', label: 'Vendors' },
+              { key: 'admin', label: 'Admins' },
+            ].map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.roleOption,
+                  filter === option.key && styles.roleOptionActive,
+                ]}
+                onPress={() => {
+                  setFilter(option.key);
+                  setShowRoleFilterModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.roleOptionText,
+                    filter === option.key && styles.roleOptionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -405,16 +442,17 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: BORDER_RADIUS.medium,
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -422,44 +460,47 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   headerSubtitle: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-  },
-  filtersContainer: {
-    backgroundColor: COLORS.white,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.background,
-  },
-  filters: {
-    paddingHorizontal: SPACING.xl,
-    gap: SPACING.sm,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.large,
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    gap: SPACING.xs,
-  },
-  filterChipActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  filterText: {
     fontSize: 13,
     fontFamily: FONTS.medium,
-    color: COLORS.text,
-    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
-  filterTextActive: {
-    color: COLORS.white,
+  filtersContainer: {
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+  },
+  filterButton: {
+    borderRadius: 16,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterButtonLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+  },
+  filterButtonValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterButtonValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontFamily: FONTS.bold,
+    marginRight: 4,
   },
   listContent: {
     padding: SPACING.xl,
@@ -503,12 +544,12 @@ const styles = StyleSheet.create({
   },
   badgeContainer: {
     flexDirection: 'row',
-    gap: SPACING.xs,
   },
   roleBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.small,
+    marginRight: SPACING.xs,
   },
   roleBadgeText: {
     fontSize: 10,
@@ -537,7 +578,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
   },
   footerDivider: {
     width: 1,
@@ -549,10 +589,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FONTS.regular,
     color: COLORS.text,
+    marginLeft: SPACING.xs,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: SPACING.xxl * 2,
+    paddingVertical: 96,
   },
   emptyIconContainer: {
     width: 96,
@@ -572,7 +613,43 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 13,
     fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  roleModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleModalContent: {
+    width: '80%',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.large,
+    padding: SPACING.lg,
+  },
+  roleModalTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
     color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  roleOption: {
+    paddingVertical: SPACING.sm,
+  },
+  roleOptionActive: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.medium,
+    paddingHorizontal: SPACING.sm,
+  },
+  roleOptionText: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    color: COLORS.text,
+  },
+  roleOptionTextActive: {
+    fontFamily: FONTS.bold,
+    color: '#007AFF',
   },
   modalOverlay: {
     flex: 1,
@@ -628,7 +705,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.xl,
-    gap: SPACING.md,
+  },
+  modalActionsDisabled: {
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.xl,
+  },
+  modalInfoText: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    color: COLORS.textSecondary,
   },
   modalButton: {
     flex: 1,
@@ -638,7 +724,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.medium,
     borderWidth: 1.5,
-    gap: SPACING.xs,
+    marginRight: SPACING.md,
   },
   suspendButton: {
     backgroundColor: '#F59E0B10',
@@ -647,9 +733,11 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: COLORS.error + '10',
     borderColor: COLORS.error,
+    marginRight: 0,
   },
   modalButtonText: {
     fontSize: 14,
     fontFamily: FONTS.bold,
+    marginLeft: SPACING.xs,
   },
 });

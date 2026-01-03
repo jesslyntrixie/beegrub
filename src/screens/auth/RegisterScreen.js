@@ -107,7 +107,6 @@ export const RegisterScreen = ({ route, navigation }) => {
     if (!validateForm()) return;
 
     setLoading(true);
-    console.log('📝 Starting registration with:', formData.email, userType);
     
     try {
       // Prepare user metadata for signup
@@ -125,18 +124,13 @@ export const RegisterScreen = ({ route, navigation }) => {
         userData.canteenLocation = formData.canteenLocation;
       }
 
-      console.log('📞 Calling authService.signUp() with metadata:', userData);
       const { data, error } = await authService.signUp(
         formData.email, 
         formData.password, 
         userData
       );
       
-      console.log('✅ signUp response:', { data, error });
-      
       if (error) {
-        console.error('❌ Signup error:', error);
-        
         // Show user-friendly error
         if (error.message && error.message.toLowerCase().includes('already registered')) {
           setErrors({ email: 'This email is already registered' });
@@ -149,9 +143,6 @@ export const RegisterScreen = ({ route, navigation }) => {
       }
 
       if (data.user) {
-        console.log('👤 Auth user created:', data.user.id);
-        console.log('📧 Confirmation email sent to:', formData.email);
-        
         // Navigate to confirmation screen
         setLoading(false);
         navigation.navigate('ConfirmEmail', { 
@@ -159,12 +150,10 @@ export const RegisterScreen = ({ route, navigation }) => {
         });
         return;
       } else {
-        console.warn('⚠️ No user data returned from signup');
         setErrors({ general: 'Registration failed. Please try again.' });
         setLoading(false);
       }
     } catch (err) {
-      console.error('🔴 Registration catch error:', err);
       setErrors({ general: err.message || 'An unexpected error occurred' });
       setLoading(false);
     }

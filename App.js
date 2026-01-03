@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { CartProvider } from './src/context/CartContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import * as Linking from 'expo-linking';
-import { supabase } from './src/services/supabase';
+import { supabase, passwordRecoveryState } from './src/services/supabase';
 
 export default function App() {
   const navRef = useRef(null);
@@ -12,7 +12,6 @@ export default function App() {
       if (!url) return;
 
       try {
-        console.log('Received deep link:', url);
 
         // Supabase recovery links include tokens in the hash fragment, e.g.:
         // beegrub://reset-password#access_token=...&refresh_token=...&type=recovery
@@ -28,13 +27,17 @@ export default function App() {
           return;
         }
 
+        // IMPORTANT: mark recovery BEFORE setting the session so that
+        // the auth state listener in AppNavigator sees the flag when
+        // Supabase emits the auth event (e.g. SIGNED_IN / INITIAL_SESSION).
+        passwordRecoveryState.start();
+
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
 
         if (error) {
-          console.log('Error setting Supabase session from recovery link:', error);
           return;
         }
 
@@ -42,7 +45,6 @@ export default function App() {
           navRef.current.navigate('ResetPassword');
         }
       } catch (err) {
-        console.log('Failed to process deep link:', err);
       }
     };
 

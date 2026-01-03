@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { authService } from '../../services/supabase';
+import { authService, passwordRecoveryState } from '../../services/supabase';
 import { COLORS } from '../../constants/colors';
 
 const ResetPasswordScreen = ({ navigation }) => {
@@ -31,8 +31,21 @@ const ResetPasswordScreen = ({ navigation }) => {
       Alert.alert('Success', 'Your password has been updated.', [
         {
           text: 'OK',
-          onPress: () => {
-            navigation.popToTop();
+          onPress: async () => {
+            try {
+              // End the recovery flow and sign the user out so that
+              // they are not treated as logged in just because they
+              // opened the reset link.
+              passwordRecoveryState.end();
+              await authService.signOut();
+            } catch (e) {
+              // If sign-out fails, we still navigate back to Login.
+            }
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
           },
         },
       ]);
@@ -58,7 +71,6 @@ const ResetPasswordScreen = ({ navigation }) => {
         secureTextEntry
         placeholder="Enter new password"
       />
-
       <Text style={styles.label}>Confirm New Password</Text>
       <TextInput
         style={styles.input}

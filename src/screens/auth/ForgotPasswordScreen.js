@@ -134,12 +134,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FONTS.large,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#000000',
     marginBottom: SPACING.sm,
   },
   subtitle: {
     fontSize: FONTS.small,
-    color: COLORS.textSecondary,
+    color: '#000000',
     lineHeight: 20,
   },
   form: {
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: SPACING.md,
     fontSize: FONTS.regular,
-    color: COLORS.text,
+    color: '#000000',
   },
   button: {
     backgroundColor: COLORS.black,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   backLinkText: {
     fontSize: FONTS.small,
-    color: COLORS.textSecondary,
+    color: '#000000',
   },
 });
 

@@ -39,7 +39,6 @@ export default function AdminDashboardScreen({ navigation }) {
       setPendingVendors(pendingResult.data || []);
       setStats(statsResult.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
       Alert.alert('Error', 'Failed to load data: ' + error.message);
     } finally {
       setLoading(false);
@@ -63,7 +62,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Success', `${businessName} has been approved!`);
               fetchData();
             } catch (error) {
-              console.error('Error approving vendor:', error);
               Alert.alert('Error', 'Failed to approve vendor');
             }
           }
@@ -89,7 +87,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Rejected', `${businessName} has been rejected`);
               fetchData();
             } catch (error) {
-              console.error('Error rejecting vendor:', error);
               Alert.alert('Error', 'Failed to reject vendor');
             }
           }
@@ -115,7 +112,6 @@ export default function AdminDashboardScreen({ navigation }) {
               Alert.alert('Suspended', `${businessName} has been suspended`);
               fetchData();
             } catch (error) {
-              console.error('Error suspending vendor:', error);
               Alert.alert('Error', 'Failed to suspend vendor');
             }
           }
@@ -138,7 +134,6 @@ export default function AdminDashboardScreen({ navigation }) {
               await authService.signOut();
               navigation.replace('Auth');
             } catch (error) {
-              console.error('Error logging out:', error);
             }
           }
         }
@@ -276,18 +271,20 @@ export default function AdminDashboardScreen({ navigation }) {
               <Text style={styles.statNumber}>{stats.users.total}</Text>
               <Text style={styles.statLabel}>Total Users</Text>
               <Text style={styles.statDetail}>
-                {stats.users.students} Students · {stats.users.vendors} Vendors
+                {stats.users.students} Students, {stats.users.vendors} Vendors
               </Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B' }]}>
-                <Ionicons name="time-outline" size={24} color="#F59E0B" />
+              <View style={[styles.statIconContainer, { backgroundColor: '#10B98115', borderColor: '#10B981' }]}>
+                <Ionicons name="cash-outline" size={24} color="#10B981" />
               </View>
-              <Text style={styles.statNumber}>{stats.vendors.pending}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={styles.statNumber}>
+                Rp {(stats.orders.revenue / 1000).toFixed(0)}K
+              </Text>
+              <Text style={styles.statLabel}>Platform Revenue</Text>
               <Text style={styles.statDetail}>
-                {stats.vendors.approved} Approved
+                {stats.orders.total} orders, Fees Rp {(stats.orders.fees / 1000).toFixed(0)}K
               </Text>
             </View>
           </View>
@@ -331,6 +328,23 @@ export default function AdminDashboardScreen({ navigation }) {
               <Text style={styles.menuSubtitle}>View all platform orders</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#10B981" />
+          </Pressable>
+
+          <Pressable 
+            style={({ pressed }) => [
+              styles.menuCard,
+              pressed && styles.menuCardPressed
+            ]}
+            onPress={() => navigation.navigate('AdminFeeAnalytics')}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B' }]}>
+              <Ionicons name="analytics" size={32} color="#F59E0B" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Fee Analytics</Text>
+              <Text style={styles.menuSubtitle}>Analyze platform & courier fees</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
           </Pressable>
         </View>
 

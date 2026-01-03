@@ -44,21 +44,18 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
       );
 
       if (userError || !appUser) {
-        console.error('Error fetching vendor user:', userError);
         Alert.alert('Error', 'Failed to find vendor profile for this account.');
         return;
       }
 
       const { data, error } = await apiService.menuItems.getAllByVendor(appUser.id);
       if (error) {
-        console.error('Error loading menu items:', error);
         Alert.alert('Error', 'Failed to load menu items');
         return;
       }
 
       setItems(data || []);
     } catch (err) {
-      console.error('Error loading menu items:', err);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -93,13 +90,11 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
         is_available: !item.is_available,
       });
       if (error) {
-        console.error('Error updating availability:', error);
         Alert.alert('Error', 'Failed to update item availability');
         return;
       }
       loadMenuItems();
     } catch (err) {
-      console.error('Unexpected error updating availability:', err);
       Alert.alert('Error', 'Unexpected error updating availability');
     }
   };
@@ -122,7 +117,6 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
       );
 
       if (userError || !appUser) {
-        console.error('Error fetching vendor user:', userError);
         Alert.alert('Error', 'Failed to find vendor profile for this account.');
         return;
       }
@@ -137,14 +131,12 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
       if (editingItem) {
         const { error } = await apiService.menuItems.update(editingItem.id, payload);
         if (error) {
-          console.error('Error updating menu item:', error);
           Alert.alert('Error', 'Failed to update menu item');
           return;
         }
       } else {
         const { error } = await apiService.menuItems.create(payload);
         if (error) {
-          console.error('Error creating menu item:', error);
           Alert.alert('Error', 'Failed to create menu item');
           return;
         }
@@ -153,7 +145,6 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
       resetForm();
       loadMenuItems();
     } catch (err) {
-      console.error('Unexpected error saving menu item:', err);
       Alert.alert('Error', 'Unexpected error saving menu item');
     }
   };
@@ -171,14 +162,12 @@ export const VendorMenuManagementScreen = ({ navigation }) => {
             try {
               const { error } = await apiService.menuItems.delete(item.id);
               if (error) {
-                console.error('Error deleting menu item:', error);
                 Alert.alert('Error', 'Failed to delete menu item');
                 return;
               }
               Alert.alert('Success', 'Menu item deleted successfully');
               loadMenuItems();
             } catch (err) {
-              console.error('Unexpected error deleting menu item:', err);
               Alert.alert('Error', 'Unexpected error deleting menu item');
             }
           },

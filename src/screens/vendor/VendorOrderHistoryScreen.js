@@ -98,24 +98,14 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
       );
 
       if (userError || !appUser) {
-        console.error('Error fetching vendor user:', userError);
         Alert.alert('Error', 'Failed to find vendor profile for this account.');
         return;
       }
 
       const { data, error } = await apiService.orders.getByVendor(appUser.id);
       if (error) {
-        console.error('Error loading vendor order history:', error);
         Alert.alert('Error', 'Failed to load order history');
         return;
-      }
-
-      // Debug: log first order to check student data structure
-      if (data && data.length > 0) {
-        console.log('=== FULL ORDER OBJECT ===');
-        console.log(JSON.stringify(data[0], null, 2));
-        console.log('=== STUDENT OBJECT ONLY ===');
-        console.log(JSON.stringify(data[0].students, null, 2));
       }
 
       // Sort by created_at descending (newest first)
@@ -125,7 +115,6 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
 
       setAllOrders(sorted);
     } catch (err) {
-      console.error('Error loading vendor order history:', err);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -222,7 +211,9 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
     }
   };
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  // For vendor history analytics, use subtotal (menu sales)
+  // rather than full order total which includes fees.
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
   const completedCount = filteredOrders.filter((o) => o.status === 'completed').length;
 
   const renderOrderCard = ({ item }) => {
@@ -241,11 +232,11 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
           <Text style={styles.orderNumber}>#{item.order_number || item.id.slice(0, 8)}</Text>
         </View>
 
-        <Text style={styles.studentName}>{item.students?.full_name || 'Student order'}</Text>
+        <Text style={styles.studentName}>{item.student?.full_name || 'Student order'}</Text>
         <Text style={styles.orderTime}>{formatDateTime(item.created_at)}</Text>
 
         <Text style={styles.pickupInfo}>
-          🕐 {item.time_slot || 'Time slot'}  •  📍 {item.pickup_locations?.name || 'Pickup location'}
+          🕐 {item.time_slot || item.scheduled_pickup_time || 'Time slot'}  •  📍 {item.pickup_location?.name || item.pickup_location_name || 'Pickup location'}
         </Text>
 
         {isExpanded && (
@@ -256,7 +247,7 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
                 <View key={oi.id} style={styles.itemRow}>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName} numberOfLines={1}>
-                      {oi.quantity}x {oi.menu_items?.name || 'Item'}
+                      {oi.quantity}x {oi.menu_item?.name || 'Item'}
                     </Text>
                     {oi.special_instructions ? (
                       <Text style={styles.itemNote} numberOfLines={2}>
@@ -284,14 +275,14 @@ export const VendorOrderHistoryScreen = ({ navigation }) => {
             <View style={styles.summaryRowTotal}>
               <Text style={styles.summaryTotalLabel}>Total</Text>
               <Text style={styles.summaryTotalValue}>
-                Rp {(item.total || 0).toLocaleString()}
+                Rp {(item.subtotal || 0).toLocaleString()}
               </Text>
             </View>
           </View>
         )}
 
         <View style={styles.footerRow}>
-          <Text style={styles.totalAmount}>Rp {(item.total || 0).toLocaleString()}</Text>
+          <Text style={styles.totalAmount}>Rp {(item.subtotal || 0).toLocaleString()}</Text>
         </View>
       </TouchableOpacity>
     );
